@@ -1,0 +1,128 @@
+<!--
+  Shared sidebar. Paste this whole block into every page right after <body>.
+  To mark the current page: add class="active" to that page's <a class="menu-item">
+  and add class="open" to its parent <div class="sub-menu">.
+  href values point at the sibling page files — update if you rename pages.
+-->
+<div class="sidebar">
+    <div class="brand">NGFW</div>
+
+    <div class="menu-item" onclick="toggleMenu('dashboard-menu');">
+        <span>Dashboard</span>
+        <span class="caret" id="dashboard-menu-caret">▸</span>
+    </div>
+    <div class="sub-menu" id="dashboard-menu">
+        <a class="menu-item" href="status.html">Platform</a>
+        <a class="menu-item" href="status.html">Security & VPN</a>
+    </div>
+
+    <div class="menu-item" onclick="toggleMenu('status-menu');">
+        <span>Status</span>
+        <span class="caret" id="status-menu-caret">▸</span>
+    </div>
+    <div class="sub-menu" id="status-menu">
+        <a class="menu-item" href="status.html">Overview</a>
+        <a class="menu-item" href="#">Routing</a>
+        <a class="menu-item" href="firewall.html">Firewall</a>
+        <a class="menu-item" href="logs.html">System Logs</a>
+        <a class="menu-item" href="processes.html">Processes</a>
+    </div>
+
+    <div class="menu-item" onclick="toggleMenu('system-menu');">
+        <span>System</span>
+        <span class="caret" id="system-menu-caret">▸</span>
+    </div>
+    <div class="sub-menu" id="system-menu">
+        <a class="menu-item" href="system.html">General</a>
+        <a class="menu-item" href="system.html#admin">Administration</a>
+        <a class="menu-item" href="#">Backup</a>
+        <a class="menu-item" href="#">Upgrade</a>
+        <a class="menu-item" href="#">Reboot</a>
+    </div>
+
+    <div class="menu-item" onclick="toggleMenu('services-menu');">
+        <span>Services</span>
+        <span class="caret" id="services-menu-caret">▸</span>
+    </div>
+    <div class="sub-menu" id="services-menu">
+        <a class="menu-item" href="#">Policy Routing</a>
+        <a class="menu-item" href="#">QoS</a>
+        <a class="menu-item" href="#">BAN IP</a>
+    </div>
+
+    <div class="menu-item" onclick="toggleMenu('network-menu');">
+        <span>Network</span>
+        <span class="caret" id="network-menu-caret">▸</span>
+    </div>
+    <div class="sub-menu" id="network-menu">
+        <a class="menu-item" href="interfaces.html">Interfaces</a>
+        <a class="menu-item" href="#">Routing</a>
+        <a class="menu-item" href="#">DHCP</a>
+        <a class="menu-item" href="#">DNS</a>
+        <a class="menu-item" href="#">Interface Stats</a>
+        <a class="menu-item" href="#">Interface Status</a>
+        <a class="menu-item" href="#">Diagnostics</a>
+    </div>
+
+    <div class="menu-item" onclick="toggleMenu('drouting-menu');">
+        <span>Dynamic Routing</span>
+        <span class="caret" id="drouting-menu-caret">▸</span>
+    </div>
+    <div class="sub-menu" id="drouting-menu">
+        <a class="menu-item" href="#">OSPF</a>
+        <a class="menu-item" href="#">RIP</a>
+        <a class="menu-item" href="#">BGP</a>
+        <a class="menu-item" href="#">BFD</a>
+        <a class="menu-item" href="#">Status</a>
+    </div>
+
+    <div class="menu-item" onclick="toggleMenu('firewall-menu');">
+        <span>Firewall</span>
+        <span class="caret" id="firewall-menu-caret">▸</span>
+    </div>
+    <div class="sub-menu" id="firewall-menu">
+        <a class="menu-item" href="firewall.html">Firewall</a>
+        <a class="menu-item" href="#">Connection Tracking</a>
+    </div>
+
+    <div class="menu-item" onclick="toggleMenu('vpn-menu');">
+        <span>VPN</span>
+        <span class="caret" id="vpn-menu-caret">▸</span>
+    </div>
+    <div class="sub-menu" id="vpn-menu">
+        <a class="menu-item" href="#">IPSEC VPN</a>
+        <a class="menu-item" href="#">IPSEC VPN Status</a>
+        <a class="menu-item" href="#">SSL VPN</a>
+        <a class="menu-item" href="#">SSL VPN Status</a>
+    </div>
+
+    <a href="#" class="menu-item" style="margin-top: auto;">Log out</a>
+</div>
+
+<script>
+    // Auto-open the sub-menu containing the current page's link, and mark it active.
+    (function () {
+        var here = location.pathname.split('/').pop();
+        document.querySelectorAll('.sub-menu a.menu-item').forEach(function (a) {
+            var href = a.getAttribute('href');
+            if (href && href.split('#')[0] === here) {
+                a.classList.add('active');
+                var subMenu = a.closest('.sub-menu');
+                if (subMenu) {
+                    subMenu.classList.add('open');
+                    var caret = document.getElementById(subMenu.id.replace('-menu', '-menu-caret'));
+                    if (caret) caret.style.transform = 'rotate(90deg)';
+                }
+            }
+        });
+    })();
+
+    function toggleMenu(menuId) {
+        var subMenu = document.getElementById(menuId);
+        var caretId = menuId.replace('-menu', '-menu-caret');
+        var caret = document.getElementById(caretId);
+        if (!subMenu || !caret) return;
+        var isOpen = subMenu.classList.toggle('open');
+        caret.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+</script>

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGFW - Processes</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../shared/tokens.css">
+    <link rel="stylesheet" href="../shared/components.css">
+    <style>
+        /* Page-scoped styles for the Processes page (uses shared theme variables). */
+        .proc-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
+
+        .proc-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+        .proc-toolbar .spacer { flex: 1; }
+        .proc-count { font-size: 13px; color: var(--text-muted); }
+
+        .seg { display: inline-flex; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 10px; padding: 3px; }
+        .seg button { border: none; background: none; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+        .seg button:hover { color: var(--text-main); }
+        .seg button.active { background: var(--bg-card); color: var(--primary); box-shadow: var(--shadow); }
+
+        .search-wrap { position: relative; width: 300px; max-width: 100%; }
+        .search-wrap input { width: 100%; padding-left: 34px; }
+        .search-wrap .icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--text-muted); }
+
+        .proc-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+        .proc-scroll { max-height: 640px; overflow: auto; }
+
+        .proc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .proc-table thead th {
+            position: sticky; top: 0; z-index: 1;
+            background: var(--surface-alt); color: var(--text-muted);
+            text-align: left; padding: 12px 16px; font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+            border-bottom: 1px solid var(--border-color); user-select: none;
+        }
+        .proc-table thead th.sortable { cursor: pointer; }
+        .proc-table thead th.sortable:hover { color: var(--text-main); }
+        .proc-table thead th .arrow { color: var(--primary); margin-left: 4px; }
+        .proc-table tbody td { padding: 11px 16px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+        .proc-table tbody tr:last-child td { border-bottom: none; }
+        .proc-table tbody tr:hover { background: var(--surface-alt); }
+
+        .pid-chip { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12px; font-weight: 600; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 6px; padding: 2px 8px; }
+
+        .owner-chip { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--lan-bg); color: var(--lan-text); }
+        .owner-chip.root { background: var(--wan-bg); color: var(--wan-text); }
+
+        .proc-cmd { display: flex; align-items: center; gap: 12px; }
+        .proc-avatar { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; background: rgba(37,99,235,0.12); }
+        .proc-avatar { color: var(--primary); }
+        .proc-avatar.kernel { color: var(--text-muted); }
+        .proc-avatar.kernel { background: var(--surface-alt); border: 1px solid var(--border-color); }
+        .proc-name { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 13px; font-weight: 600; color: var(--text-main); }
+        .proc-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+        .usage { display: flex; align-items: center; gap: 10px; min-width: 130px; }
+        .usage .gauge-track { flex: 1; height: 7px; }
+        .usage .num { font-size: 12px; font-weight: 600; width: 34px; text-align: right; color: var(--text-main); }
+
+        .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+        .act {
+            display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px;
+            border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card);
+            font-size: 12px; font-weight: 600; color: var(--text-main); cursor: pointer; white-space: nowrap;
+        }
+        .act svg { flex-shrink: 0; }
+        .act:hover { border-color: var(--primary); color: var(--primary); background: var(--surface-alt); }
+        .act.danger { color: var(--danger); border-color: rgba(239,68,68,0.4); }
+        .act.danger:hover { background: rgba(239,68,68,0.1); border-color: var(--danger); color: var(--danger); }
+
+        .proc-empty { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+
+        .toast {
+            position: fixed; bottom: 24px; left: 290px; background: #0f172a; color: #fff;
+            padding: 11px 18px; border-radius: 10px; font-size: 13px; font-weight: 500;
+            opacity: 0; transform: translateY(8px); transition: all 0.2s ease; pointer-events: none; z-index: 200;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.35);
+        }
+        .toast.show { opacity: 1; transform: none; }
+
+        @media (max-width: 1100px) { .proc-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="brand">NGFW</div>
+    <a class="menu-item" href="status.html">Dashboard</a>
+    <div class="menu-item" onclick="toggleMenu('status-menu');"><span>Status</span><span class="caret" id="status-menu-caret">▸</span></div>
+    <div class="sub-menu" id="status-menu">
+        <a class="menu-item" href="status.html">Overview</a>
+        <a class="menu-item" href="routing.html">Routing</a>
+        <a class="menu-item" href="firewall.html">Firewall</a>
+        <a class="menu-item" href="logs.html">System Logs</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('system-menu');"><span>System</span><span class="caret" id="system-menu-caret">▸</span></div>
+    <div class="sub-menu" id="system-menu">
+        <a class="menu-item" href="system.html">System</a>
+        <a class="menu-item" href="administration.html">Administration</a>
+        <a class="menu-item" href="software.html">Software</a>
+        <a class="menu-item" href="startup.html">Startup</a>
+        <a class="menu-item" href="scheduled.html">Scheduled Tasks</a>
+        <a class="menu-item" href="backup.html">Backup / Flash Firmware</a>
+        <a class="menu-item" href="reboot.html">Reboot</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('network-menu');"><span>Network</span><span class="caret" id="network-menu-caret">▸</span></div>
+    <div class="sub-menu" id="network-menu">
+        <a class="menu-item" href="interfaces.html">Interfaces</a>
+        <a class="menu-item" href="routing.html">Routing</a>
+        <a class="menu-item" href="dhcp.html">DHCP</a>
+        <a class="menu-item" href="dns.html">DNS</a>
+        <a class="menu-item" href="diagnostics.html">Diagnostics</a>
+        <a class="menu-item" href="firewall.html">Firewall</a>
+    </div>
+    <a href="#" class="menu-item" style="margin-top: auto;">Log out</a>
+</div>
+
+
+
+<div class="main-content">
+    <div class="top-header">
+        <div class="header-left"><div class="page-title">Processes</div></div>
+        <div class="header-right">
+            <div class="time-display" id="liveTime">--:--:--</div>
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color theme">
+                <span id="themeIcon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span id="themeLabel">Dark</span>
+            </button>
+            <div class="status-badge">● Refreshing</div>
+        </div>
+    </div>
+
+    <div class="page-container">
+        <div class="page-intro">This list gives an overview over currently running system processes and their status.</div>
+
+        <!-- Summary tiles (computed from the process list) -->
+        <div class="proc-stats" id="proc-stats"></div>
+
+        <div class="proc-toolbar">
+            <div class="seg" id="proc-seg">
+                <button class="active" data-f="all" onclick="setFilter('all')">All</button>
+                <button data-f="user" onclick="setFilter('user')">User processes</button>
+                <button data-f="kernel" onclick="setFilter('kernel')">Kernel threads</button>
+            </div>
+            <div class="search-wrap">
+                <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+                <input type="text" id="proc-search" placeholder="Search PID, owner or command…">
+            </div>
+            <div class="spacer"></div>
+            <div class="proc-count" id="proc-count">—</div>
+        </div>
+
+        <!-- maps to: ubus call luci getProcessList / ps -->
+        <div class="proc-card">
+            <div class="proc-scroll">
+                <table class="proc-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-k="pid" onclick="setSort('pid')">PID</th>
+                            <th class="sortable" data-k="owner" onclick="setSort('owner')">Owner</th>
+                            <th class="sortable" data-k="cmd" onclick="setSort('cmd')">Command</th>
+                            <th class="sortable" data-k="cpu" onclick="setSort('cpu')">CPU usage (%)</th>
+                            <th class="sortable" data-k="mem" onclick="setSort('mem')">Memory usage (%)</th>
+                            <th style="text-align:right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="proc-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="page-footer">
+            Powered by LuCI (HEAD detached at 650a6ca3) branch (26.124.63982~650a6ca) &nbsp;|&nbsp; ArgonTheme v2.4.5 &nbsp;|&nbsp; OpenWrt 25.12.3-r32912-6639b15f62
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    function toggleMenu(menuId) {
+        var subMenu = document.getElementById(menuId);
+        var caret = document.getElementById(menuId.replace('-menu', '-menu-caret'));
+        if (!subMenu || !caret) return;
+        var isOpen = subMenu.classList.toggle('open');
+        caret.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+
+    // { pid, owner, cmd, cpu %, mem % } — replace with live data later
+    var PROCS = [
+        [1, 'root', '/sbin/procd'], [2, 'root', '[kthreadd]'], [3, 'root', '[pool_workqueue_]'],
+        [4, 'root', '[kworker/R-kvfre]'], [5, 'root', '[kworker/R-rcu_g]'], [6, 'root', '[kworker/R-sync_]'],
+        [7, 'root', '[kworker/R-slub_]'], [8, 'root', '[kworker/R-netns]'], [9, 'root', '[kworker/0:0-eve]'],
+        [10, 'root', '[kworker/0:0H-ev]'], [12, 'root', '[kworker/u16:0-i]'], [13, 'root', '[kworker/R-mm_pe]'],
+        [14, 'root', '[rcu_tasks_trace]'], [15, 'root', '[ksoftirqd/0]'], [16, 'root', '[rcu_sched]'],
+        [17, 'root', '[rcu_exp_par_gp_]'], [18, 'root', '[rcu_exp_gp_kthr]'], [19, 'root', '[migration/0]'],
+        [20, 'root', '[idle_inject/0]']
+    ].map(function (p) { return { pid: p[0], owner: p[1], cmd: p[2], cpu: 0, mem: 0 }; });
+
+    var ICONS = {
+        list: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/>',
+        user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+        cpu: '<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>',
+        activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+        term: '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>',
+        refresh: '<path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/>',
+        stop: '<rect x="6" y="6" width="12" height="12" rx="1.5"/>',
+        x: '<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>'
+    };
+    function ic(name, size) {
+        return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICONS[name] + '</svg>';
+    }
+
+    var state = { filter: 'all', sortKey: 'pid', sortDir: 1, search: '' };
+
+    function isKernel(p) { return p.cmd.charAt(0) === '['; }
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    function usage(v) {
+        var cls = v > 70 ? 'danger' : v > 40 ? 'warn' : '';
+        return '<div class="usage"><div class="gauge-track"><div class="gauge-fill ' + cls + '" style="width:' + v + '%"></div></div>' +
+               '<span class="num">' + v + '%</span></div>';
+    }
+
+    function tile(icon, cls, label, value) {
+        return '<div class="stat-tile"><div class="stat-tile-icon ' + cls + '">' + icon + '</div><div>' +
+               '<div class="stat-tile-label">' + label + '</div><div class="stat-tile-value">' + value + '</div></div></div>';
+    }
+
+    function renderStats() {
+        var total = PROCS.length;
+        var kernel = PROCS.filter(isKernel).length;
+        var cpu = PROCS.reduce(function (a, p) { return a + p.cpu; }, 0);
+        var mem = PROCS.reduce(function (a, p) { return a + p.mem; }, 0);
+        document.getElementById('proc-stats').innerHTML =
+            tile(ic('list', 18), '', 'Total processes', total) +
+            tile(ic('user', 18), 'c-green', 'User processes', total - kernel) +
+            tile(ic('cpu', 18), 'c-slate', 'Kernel threads', kernel) +
+            tile(ic('activity', 18), 'c-amber', 'CPU / Memory', cpu + '% / ' + mem + '%');
+    }
+
+    function visible() {
+        var q = state.search.toLowerCase();
+        var list = PROCS.filter(function (p) {
+            if (state.filter === 'kernel' && !isKernel(p)) return false;
+            if (state.filter === 'user' && isKernel(p)) return false;
+            return !q || (p.pid + ' ' + p.owner + ' ' + p.cmd).toLowerCase().indexOf(q) !== -1;
+        });
+        var k = state.sortKey, d = state.sortDir;
+        list.sort(function (a, b) {
+            var x = a[k], y = b[k];
+            if (typeof x === 'string') { x = x.toLowerCase(); y = y.toLowerCase(); }
+            return x < y ? -d : x > y ? d : 0;
+        });
+        return list;
+    }
+
+    function renderProcs() {
+        var rows = visible();
+        document.getElementById('proc-body').innerHTML = rows.length ? rows.map(function (p) {
+            var kern = isKernel(p);
+            return '<tr>' +
+                '<td><span class="pid-chip">' + p.pid + '</span></td>' +
+                '<td><span class="owner-chip' + (p.owner === 'root' ? ' root' : '') + '">' + esc(p.owner) + '</span></td>' +
+                '<td><div class="proc-cmd"><div class="proc-avatar' + (kern ? ' kernel' : '') + '">' + ic(kern ? 'cpu' : 'term', 16) + '</div>' +
+                    '<div><div class="proc-name">' + esc(p.cmd) + '</div>' +
+                    '<div class="proc-sub">' + (kern ? 'Kernel thread' : 'User process') + '</div></div></div></td>' +
+                '<td>' + usage(p.cpu) + '</td>' +
+                '<td>' + usage(p.mem) + '</td>' +
+                '<td><div class="row-actions">' +
+                    '<button class="act" title="Send SIGHUP" onclick="sendSignal(' + p.pid + ', \'hangup\')">' + ic('refresh', 13) + ' Hang up</button>' +
+                    '<button class="act" title="Send SIGTERM" onclick="sendSignal(' + p.pid + ', \'terminate\')">' + ic('stop', 13) + ' Terminate</button>' +
+                    '<button class="act danger" title="Send SIGKILL" onclick="sendSignal(' + p.pid + ', \'kill\')">' + ic('x', 13) + ' Kill</button>' +
+                '</div></td>' +
+            '</tr>';
+        }).join('') : '<tr><td colspan="6"><div class="proc-empty">No processes match your filters.</div></td></tr>';
+
+        document.getElementById('proc-count').textContent = 'Showing ' + rows.length + ' of ' + PROCS.length + ' processes';
+
+        document.querySelectorAll('.proc-table thead th.sortable').forEach(function (th) {
+            var old = th.querySelector('.arrow'); if (old) old.remove();
+            if (th.dataset.k === state.sortKey) {
+                th.insertAdjacentHTML('beforeend', '<span class="arrow">' + (state.sortDir === 1 ? '▲' : '▼') + '</span>');
+            }
+        });
+        renderStats();
+    }
+
+    function setFilter(f) {
+        state.filter = f;
+        document.querySelectorAll('#proc-seg button').forEach(function (b) { b.classList.toggle('active', b.dataset.f === f); });
+        renderProcs();
+    }
+
+    function setSort(k) {
+        if (state.sortKey === k) state.sortDir = -state.sortDir; else { state.sortKey = k; state.sortDir = 1; }
+        renderProcs();
+    }
+
+    var toastTimer;
+    function toast(msg) {
+        var t = document.getElementById('toast');
+        t.textContent = msg; t.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2200);
+    }
+
+    // Mockup behaviour only: hang up just confirms, terminate/kill remove the row.
+    // Wire to the real LuCI call (e.g. luci.setProcessSignal) later.
+    function sendSignal(pid, sig) {
+        if (sig === 'hangup') { toast('SIGHUP sent to PID ' + pid); return; }
+        var label = sig === 'kill' ? 'Kill' : 'Terminate';
+        if (!confirm(label + ' process ' + pid + '?')) return;
+        PROCS = PROCS.filter(function (p) { return p.pid !== pid; });
+        renderProcs();
+        toast((sig === 'kill' ? 'SIGKILL' : 'SIGTERM') + ' sent to PID ' + pid + ' — process ended');
+    }
+
+    document.getElementById('proc-search').addEventListener('input', function (e) {
+        state.search = e.target.value.trim();
+        renderProcs();
+    });
+
+    renderProcs();
+</script>
+<script src="../shared/theme-clock.js"></script>
+</body>
+</html>

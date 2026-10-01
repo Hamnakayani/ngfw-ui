@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGFW - Routing</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../shared/tokens.css">
+    <link rel="stylesheet" href="../shared/components.css">
+    <style>
+        /* Page-scoped styles for the Interfaces page (uses shared theme variables). */
+
+        :root {
+            /* Navy: set --if-navy to your sidebar colour if it differs (e.g. var(--sidebar-bg)). */
+            --if-navy: #14213d;
+            --if-navy-2: #1f3560;
+            --if-navy-grad: linear-gradient(135deg, var(--if-navy) 0%, var(--if-navy-2) 100%);
+            --if-green: #22a06b; /* only colour used besides the theme accent: "connected" dot */
+            --if-shadow-sm: 0 1px 1px rgba(15, 23, 42, 0.06), 0 3px 6px rgba(15, 23, 42, 0.08), 0 8px 16px -4px rgba(15, 23, 42, 0.10);
+            --if-shadow-md: 0 2px 3px rgba(15, 23, 42, 0.08), 0 8px 16px rgba(15, 23, 42, 0.12), 0 22px 36px -8px rgba(15, 23, 42, 0.18);
+            --if-shadow-lg: 0 4px 8px rgba(15, 23, 42, 0.10), 0 24px 48px rgba(15, 23, 42, 0.22);
+            --if-shadow-modal: 0 10px 20px rgba(2, 6, 23, 0.18), 0 40px 90px rgba(2, 6, 23, 0.35);
+        }
+
+        /* ---------- Summary strip ---------- */
+        .if-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
+        .if-summary-tile {
+            position: relative; display: flex; align-items: center; gap: 14px;
+            background: linear-gradient(160deg, var(--bg-card) 0%, var(--surface-alt) 140%);
+            border: 1px solid var(--border-color); border-radius: 14px; padding: 16px 18px;
+            box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .if-summary-tile:hover { box-shadow: var(--if-shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.35); transform: translateY(-1px); }
+        .if-summary-icon {
+            flex: 0 0 auto; width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+            font-size: 17px; color: var(--text-muted);
+            background: linear-gradient(180deg, var(--bg-card), var(--surface-alt));
+            border: 1px solid var(--border-color);
+            box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+        .if-summary-tile .n { font-size: 22px; font-weight: 700; color: var(--text-main); line-height: 1.1; letter-spacing: -0.3px; }
+        .if-summary-tile .l { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+        /* ---------- Card grid ---------- */
+        .if-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; margin-bottom: 20px; }
+
+        .if-card {
+            display: flex; flex-direction: column; overflow: hidden;
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px;
+            box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .if-card:hover { box-shadow: var(--if-shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.35); transform: translateY(-2px); }
+        .if-card.is-down .if-port { filter: grayscale(1); opacity: 0.55; }
+
+        /* Head: port glyph, name, status */
+        .if-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 14px; }
+        .if-port {
+            flex: 0 0 auto; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+            background: var(--if-navy-grad);
+            box-shadow: 0 6px 12px -4px rgba(20, 33, 61, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+        }
+        .if-port svg { width: 22px; height: 22px; }
+        .if-title { min-width: 0; flex: 1 1 auto; }
+        .if-name { font-size: 15.5px; font-weight: 600; color: var(--text-main); letter-spacing: -0.2px; line-height: 1.25; }
+        .if-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+        .if-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+        .if-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); opacity: 0.45; }
+        .if-status.up { color: var(--text-main); }
+        .if-status.up::before { background: var(--if-green); opacity: 1; box-shadow: 0 0 0 3px rgba(34, 160, 107, 0.16); }
+
+        .if-device-tag {
+            font-size: 11px; font-weight: 600; color: var(--text-muted);
+            background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 6px; padding: 2px 7px;
+        }
+
+        /* Body: quiet key/value rows */
+        .if-body { padding: 0 18px 14px; }
+        .if-rows { display: grid; grid-template-columns: auto 1fr; gap: 7px 16px; font-size: 13px; }
+        .if-rows .k { color: var(--text-muted); }
+        .if-rows .v { text-align: right; color: var(--text-main); font-weight: 500; }
+        .if-rows .v.mono, .mono { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12.5px; }
+        .if-bridge-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+
+        /* Traffic: two halves split by a hairline */
+        .if-io { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border-color); }
+        .if-io > div { padding: 12px 18px; }
+        .if-io > div + div { border-left: 1px solid var(--border-color); }
+        .if-io-label { font-size: 11.5px; color: var(--text-muted); }
+        .if-io-value { font-size: 14px; font-weight: 600; color: var(--text-main); margin-top: 2px; letter-spacing: -0.1px; }
+        .if-io-pkts { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+
+        /* Expandable details */
+        .if-details { display: none; padding: 12px 18px 14px; border-top: 1px solid var(--border-color); background: var(--surface-alt); box-shadow: inset 0 3px 6px -4px rgba(0, 0, 0, 0.12); }
+        .if-card.expanded .if-details { display: block; }
+
+        /* Footer: toggle on the left, actions on the right */
+        .if-foot {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto;
+            padding: 10px 12px 10px 18px; background: var(--surface-alt); border-top: 1px solid var(--border-color);
+        }
+        .if-details-toggle { font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 5px; }
+        .if-details-toggle:hover { color: var(--text-main); }
+        .if-details-toggle .chevron { transition: transform 0.15s ease; font-size: 10px; }
+        .if-card.expanded .if-details-toggle .chevron { transform: rotate(90deg); }
+        .if-actions { display: flex; gap: 6px; }
+        .if-actions .btn { padding: 5px 11px; font-size: 12px; box-shadow: var(--if-shadow-sm); }
+        .if-actions .btn:hover { box-shadow: var(--if-shadow-md); }
+        .if-actions .btn:active { box-shadow: none; }
+
+        /* Devices tab */
+        .dev-type-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: var(--surface-alt); border: 1px solid var(--border-color); color: var(--text-muted); }
+        .table-scroll { border-radius: 14px; box-shadow: var(--if-shadow-sm); }
+        .data-table tbody tr { transition: background 0.12s ease; }
+        .data-table tbody tr:hover { background: var(--surface-alt); }
+
+        /* Panels used inside tabs and the modal */
+        .panel-card { box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+        .view-footer-actions .btn-primary, .modal-footer .btn-primary {
+            background: var(--if-navy-grad); border-color: var(--if-navy); color: #fff;
+            box-shadow: 0 6px 14px -4px rgba(20, 33, 61, 0.6);
+        }
+
+        /* ---------- Modal ---------- */
+        body.modal-open { overflow: hidden; }
+
+        .modal-backdrop {
+            position: fixed; inset: 0; z-index: 1000;
+            display: none; align-items: center; justify-content: center; padding: 24px;
+            background: rgba(8, 12, 24, 0.55);
+            -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%);
+        }
+        .modal-backdrop.open { display: flex; animation: modal-fade 0.18s ease-out; }
+
+        .modal-dialog {
+            display: flex; flex-direction: column;
+            width: 100%; max-width: 1080px; height: min(880px, calc(100vh - 48px));
+            background: var(--bg-card); color: var(--text-main);
+            border: 1px solid var(--border-color); border-radius: 18px;
+            box-shadow: var(--if-shadow-modal);
+            overflow: hidden;
+            animation: modal-pop 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+        }
+
+        .modal-header {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 22px 28px 0 28px;
+            background: linear-gradient(180deg, var(--surface-alt) 0%, var(--bg-card) 100%);
+        }
+        .modal-title { font-size: 20px; font-weight: 700; letter-spacing: -0.2px; }
+        .modal-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .modal-close {
+            flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; cursor: pointer;
+            display: grid; place-items: center; font-size: 18px; line-height: 1;
+            background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-color);
+            box-shadow: var(--if-shadow-sm); transition: color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .modal-close:hover { color: var(--text-main); box-shadow: var(--if-shadow-md); }
+
+        .modal-tabs { padding: 14px 28px 0 28px; background: var(--bg-card); border-bottom: 1px solid var(--border-color); }
+        .modal-tabs .tabs { margin-bottom: 0; }
+
+        .modal-body {
+            flex: 1 1 auto; overflow-y: auto; padding: 24px 28px;
+            background: var(--surface-alt);
+            box-shadow: inset 0 6px 8px -8px rgba(0, 0, 0, 0.25), inset 0 -6px 8px -8px rgba(0, 0, 0, 0.25);
+        }
+        .modal-body .panel-card:last-child { margin-bottom: 0; }
+
+        .modal-footer {
+            display: flex; justify-content: flex-end; gap: 10px; padding: 16px 28px;
+            background: var(--bg-card); border-top: 1px solid var(--border-color);
+            box-shadow: 0 -8px 16px -12px rgba(0, 0, 0, 0.2);
+        }
+
+        @keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modal-pop { from { opacity: 0; transform: translateY(14px) scale(0.97); } to { opacity: 1; transform: none; } }
+
+        @media (max-width: 900px) { .if-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 600px) {
+            .modal-backdrop { padding: 0; align-items: flex-end; }
+            .modal-dialog { height: 94vh; max-width: none; border-radius: 18px 18px 0 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .modal-backdrop.open, .modal-dialog { animation: none; }
+            .if-card, .if-summary-tile, .if-actions .btn { transition: none; }
+        }
+
+        /* ---------- Depth pass: stronger, layered shading ---------- */
+        .if-summary-tile {
+            background: linear-gradient(180deg, var(--bg-card) 0%, var(--surface-alt) 100%);
+            box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -2px 0 rgba(0, 0, 0, 0.04);
+        }
+        .if-summary-icon {
+            box-shadow: 0 3px 6px rgba(15, 23, 42, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -2px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .if-card {
+            background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card) 60%, var(--surface-alt) 100%);
+            border-color: color-mix(in srgb, var(--border-color) 80%, rgba(15, 23, 42, 0.25));
+            box-shadow:
+                var(--if-shadow-md),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+        }
+        .if-card:hover {
+            box-shadow:
+                var(--if-shadow-lg),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+            transform: translateY(-3px);
+        }
+
+        /* header sits on a soft light-to-transparent wash so it reads as its own layer */
+        .if-head { background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent); }
+        .if-port {
+            box-shadow:
+                0 8px 14px -4px rgba(20, 33, 61, 0.6),
+                0 2px 3px rgba(20, 33, 61, 0.35),
+                inset 0 1px 0 rgba(255, 255, 255, 0.28),
+                inset 0 -3px 6px rgba(0, 0, 0, 0.25);
+        }
+
+        /* traffic strip becomes a recessed well */
+        .if-io { background: var(--surface-alt); box-shadow: inset 0 3px 6px -3px rgba(0, 0, 0, 0.16), inset 0 -1px 0 rgba(255, 255, 255, 0.5); }
+        .if-io-value { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4); }
+
+        .if-foot {
+            background: linear-gradient(180deg, var(--surface-alt), color-mix(in srgb, var(--surface-alt) 88%, rgba(15, 23, 42, 0.12)));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        }
+        .if-actions .btn {
+            background: linear-gradient(180deg, var(--bg-card), var(--surface-alt));
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 3px 6px -2px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+        .if-actions .btn:active { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18); transform: translateY(1px); }
+
+        .view-footer-actions .btn-primary, .modal-footer .btn-primary {
+            box-shadow: 0 8px 16px -4px rgba(20, 33, 61, 0.55), 0 2px 3px rgba(20, 33, 61, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .panel-card {
+            background: linear-gradient(180deg, var(--bg-card), color-mix(in srgb, var(--bg-card) 94%, var(--surface-alt)));
+            box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+        }
+        .table-scroll { box-shadow: var(--if-shadow-md); }
+
+        /* popup: deeper elevation, layered header/footer */
+        .modal-dialog { box-shadow: 0 2px 4px rgba(2, 6, 23, 0.2), 0 24px 48px rgba(2, 6, 23, 0.35), 0 60px 120px rgba(2, 6, 23, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+        .modal-header { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+        .modal-tabs { box-shadow: 0 6px 10px -8px rgba(0, 0, 0, 0.25); position: relative; z-index: 1; }
+        .modal-footer { background: linear-gradient(180deg, var(--bg-card), var(--surface-alt)); box-shadow: 0 -10px 18px -12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+        .modal-body .panel-card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 6px 14px -4px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.7); }
+
+        /* Port tile: flat navy, no shading */
+        .if-port { background: var(--if-navy); box-shadow: none; }
+
+        /* ---------- Devices tab ---------- */
+        .dev-name-row { display: flex; align-items: center; gap: 8px; }
+        .dev-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); opacity: 0.45; flex: 0 0 auto; }
+        .dev-dot.up { background: var(--if-green); opacity: 1; box-shadow: 0 0 0 3px rgba(34, 160, 107, 0.16); }
+        .dev-name { font-weight: 600; color: var(--text-main); }
+        .dev-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; padding-left: 15px; }
+        .dev-actions { display: inline-flex; gap: 6px; justify-content: flex-end; }
+        .dev-actions .btn { padding: 5px 12px; font-size: 12px; }
+        .dev-actions .btn[disabled] { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+        tr.dev-unconfigured .dev-name, tr.dev-unconfigured td.mono { opacity: 0.6; }
+
+        .dev-ports { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; padding: 10px; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06); }
+        .dev-port { display: flex; align-items: center; gap: 7px; padding: 7px 10px; font-size: 13px; color: var(--text-main); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 9px; cursor: pointer; box-shadow: var(--if-shadow-sm); }
+        .dev-port input { margin: 0; }
+
+        .dev-vlan-input { width: 110px; }
+        .dev-empty-row td { text-align: center; color: var(--text-muted); font-style: italic; padding: 18px 12px; }
+
+        /* Global options: dynamic list + inline code */
+        .dyn-list { display: flex; flex-direction: column; gap: 8px; }
+        .dyn-row { display: flex; gap: 8px; }
+        .dyn-row input { flex: 1 1 auto; }
+        .dyn-row .btn { flex: 0 0 auto; padding: 6px 12px; }
+        .field-hint code { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 11.5px; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 5px; padding: 1px 5px; }
+        .field-hint a { color: var(--primary); }
+    
+        /* ---------- Network > Routing ---------- */
+        .rt-intro { margin-bottom: 20px; }
+        .rt-intro p { margin: 0 0 6px; font-size: 13.5px; line-height: 1.6; color: var(--text-muted); }
+        .rt-intro p:last-child { margin-bottom: 0; }
+        .rt-intro p:first-child { color: var(--text-main); }
+        .rt-off td:not(:last-child):not(:nth-last-child(2)) { opacity: 0.55; }
+        .rt-add-row { display: flex; justify-content: flex-end; margin-top: 16px; }
+
+        /* ---------- Refinement pass: typography, controls, tables, focus ---------- */
+        ::selection { background: color-mix(in srgb, var(--if-navy-2) 25%, transparent); }
+        body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+        .mono, .if-io-value, .if-summary-tile .n, .data-table td { font-variant-numeric: tabular-nums; }
+
+        /* Tabs: segmented control */
+        .tabs {
+            display: inline-flex; gap: 4px; padding: 4px; max-width: 100%; overflow-x: auto;
+            background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 12px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+        }
+        .tabs .tab {
+            border: none; border-bottom: none; background: transparent; border-radius: 9px;
+            padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap;
+            cursor: pointer; box-shadow: none; transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+        }
+        .tabs .tab::after { display: none; }
+        .tabs .tab:hover { color: var(--text-main); }
+        .tabs .tab.active {
+            background: var(--bg-card); color: var(--text-main);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 4px 10px -3px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+        .modal-tabs { padding: 14px 28px; }
+
+        /* Forms */
+        .form-grid-2col { gap: 18px 24px; }
+        .form-group > label { display: block; font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; }
+        .field-hint { font-size: 12px; line-height: 1.55; color: var(--text-muted); margin-top: 6px; }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group input[type="password"], .form-group select {
+            min-height: 38px; border-radius: 10px; font-size: 13.5px;
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.07);
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none; border-color: var(--if-navy-2);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--if-navy-2) 22%, transparent), inset 0 1px 2px rgba(15, 23, 42, 0.07);
+        }
+        .form-group input::placeholder { color: var(--text-muted); opacity: 0.65; }
+        .panel-title { font-size: 14px; font-weight: 700; letter-spacing: -0.1px; padding-bottom: 12px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); }
+
+        /* Switches: navy when on */
+        .switch input:checked + .slider { background: var(--if-navy-2); }
+
+        /* Buttons */
+        .btn { font-weight: 600; border-radius: 10px; transition: box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease, border-color 0.15s ease; }
+        .btn:active { transform: translateY(1px); }
+        .modal-footer .btn { min-width: 96px; }
+        .btn:focus-visible, .tabs .tab:focus-visible, .modal-close:focus-visible, .if-details-toggle:focus-visible { outline: 2px solid var(--if-navy-2); outline-offset: 2px; }
+        .switch input:focus-visible + .slider { outline: 2px solid var(--if-navy-2); outline-offset: 2px; }
+
+        /* Tables */
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .data-table thead th {
+            background: var(--surface-alt); color: var(--text-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.2px;
+            text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--border-color); white-space: nowrap;
+        }
+        .data-table tbody td { padding: 13px 16px; font-size: 13px; vertical-align: middle; border-bottom: 1px solid var(--border-color); }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+
+        /* Scrollbars inside popups */
+        .modal-body { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text-muted) 45%, transparent) transparent; }
+        .modal-body::-webkit-scrollbar { width: 10px; }
+        .modal-body::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text-muted) 40%, transparent); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+
+
+        /* Routing page polish */
+        .rt-intro { padding: 18px 22px; }
+        .rt-intro p:first-child { font-size: 14.5px; font-weight: 600; letter-spacing: -0.1px; margin-bottom: 8px; }
+        .tab-count {
+            display: inline-block; min-width: 20px; margin-left: 8px; padding: 1px 7px; border-radius: 999px;
+            font-size: 11px; font-weight: 700; line-height: 1.6; text-align: center;
+            color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 14%, transparent);
+        }
+        .tabs .tab.active .tab-count { color: #fff; background: var(--if-navy-2); }
+        .dev-empty-row td { padding: 34px 16px; font-size: 13px; }
+        .panel-card .table-scroll { box-shadow: none; border: 1px solid var(--border-color); border-radius: 12px; }
+        .rt-add-row { padding-top: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="brand">NGFW</div>
+    <a class="menu-item" href="status.html">Dashboard</a>
+    <div class="menu-item" onclick="toggleMenu('status-menu');"><span>Status</span><span class="caret" id="status-menu-caret">▸</span></div>
+    <div class="sub-menu" id="status-menu">
+        <a class="menu-item" href="status.html">Overview</a>
+        <a class="menu-item" href="routing.html">Routing</a>
+        <a class="menu-item" href="firewall.html">Firewall</a>
+        <a class="menu-item" href="logs.html">System Logs</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('system-menu');"><span>System</span><span class="caret" id="system-menu-caret">▸</span></div>
+    <div class="sub-menu" id="system-menu">
+        <a class="menu-item" href="system.html">System</a>
+        <a class="menu-item" href="administration.html">Administration</a>
+        <a class="menu-item" href="software.html">Software</a>
+        <a class="menu-item" href="startup.html">Startup</a>
+        <a class="menu-item" href="scheduled.html">Scheduled Tasks</a>
+        <a class="menu-item" href="backup.html">Backup / Flash Firmware</a>
+        <a class="menu-item" href="reboot.html">Reboot</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('network-menu');"><span>Network</span><span class="caret" id="network-menu-caret">▸</span></div>
+    <div class="sub-menu open" id="network-menu">
+        <a class="menu-item" href="interfaces.html">Interfaces</a>
+        <a class="menu-item active" href="network-routing.html">Routing</a>
+        <a class="menu-item" href="dhcp.html">DHCP</a>
+        <a class="menu-item" href="dns.html">DNS</a>
+        <a class="menu-item" href="diagnostics.html">Diagnostics</a>
+        <a class="menu-item" href="firewall.html">Firewall</a>
+    </div>
+    <a href="#" class="menu-item" style="margin-top: auto;">Log out</a>
+</div>
+
+<div class="main-content">
+    <div class="top-header">
+        <div class="header-left"><div class="page-title">Routing</div></div>
+        <div class="header-right">
+            <div class="time-display" id="liveTime">--:--:--</div>
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color theme">
+                <span id="themeIcon"></span><span id="themeLabel">Dark</span>
+            </button>
+            <div class="status-badge">&#9679; Refreshing</div>
+        </div>
+    </div>
+
+    <div class="page-container">
+        <div class="panel-card rt-intro">
+            <p>Routing defines over which interface and gateway a certain host or network can be reached.</p>
+            <p>Routes go in routing tables and define the specific path to reach destinations.</p>
+            <p>Rules determine which routing table to use, based on conditions like source address or interface.</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" id="rt-tab-r4" onclick="switchRtTab('r4')">Static IPv4 Routes<span class="tab-count" id="rt-count-r4">0</span></button>
+            <button class="tab" id="rt-tab-r6" onclick="switchRtTab('r6')">Static IPv6 Routes<span class="tab-count" id="rt-count-r6">0</span></button>
+            <button class="tab" id="rt-tab-u4" onclick="switchRtTab('u4')">IPv4 Rules<span class="tab-count" id="rt-count-u4">0</span></button>
+            <button class="tab" id="rt-tab-u6" onclick="switchRtTab('u6')">IPv6 Rules<span class="tab-count" id="rt-count-u6">0</span></button>
+        </div>
+
+        <div id="rt-view-r4" class="tab-view active-view">
+            <div class="panel-card">
+                <div class="panel-title">Static IPv4 Routes</div>
+                <div class="table-scroll"><table class="data-table"><thead><tr><th>Interface</th><th>Target</th><th>Gateway</th><th>Metric</th><th>Table</th><th>Disable</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="rt-body-r4"></tbody></table></div>
+                <div class="rt-add-row"><button class="btn btn-primary" onclick="openRt('r4', null)">Add</button></div>
+            </div>
+        </div>
+        <div id="rt-view-r6" class="tab-view">
+            <div class="panel-card">
+                <div class="panel-title">Static IPv6 Routes</div>
+                <div class="table-scroll"><table class="data-table"><thead><tr><th>Interface</th><th>Target</th><th>Gateway</th><th>Metric</th><th>Table</th><th>Disable</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="rt-body-r6"></tbody></table></div>
+                <div class="rt-add-row"><button class="btn btn-primary" onclick="openRt('r6', null)">Add</button></div>
+            </div>
+        </div>
+        <div id="rt-view-u4" class="tab-view">
+            <div class="panel-card">
+                <div class="panel-title">IPv4 Rules</div>
+                <div class="table-scroll"><table class="data-table"><thead><tr><th>Priority</th><th>Incoming interface</th><th>Source</th><th>IP Protocol</th><th>Outgoing interface</th><th>Destination</th><th>Table</th><th>Disable</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="rt-body-u4"></tbody></table></div>
+                <div class="rt-add-row"><button class="btn btn-primary" onclick="openRt('u4', null)">Add</button></div>
+            </div>
+        </div>
+        <div id="rt-view-u6" class="tab-view">
+            <div class="panel-card">
+                <div class="panel-title">IPv6 Rules</div>
+                <div class="table-scroll"><table class="data-table"><thead><tr><th>Priority</th><th>Incoming interface</th><th>Source</th><th>IP Protocol</th><th>Outgoing interface</th><th>Destination</th><th>Table</th><th>Disable</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="rt-body-u6"></tbody></table></div>
+                <div class="rt-add-row"><button class="btn btn-primary" onclick="openRt('u6', null)">Add</button></div>
+            </div>
+        </div>
+
+        <div class="floating-save-bar">
+            <button class="btn btn-primary" style="padding: 6px 12px; font-size:12px;">Save &amp; Apply</button>
+        </div>
+        <div class="page-footer">
+            Powered by LuCI (HEAD detached at 650a6ca3) branch (26.124.63982~650a6ca) &nbsp;|&nbsp; ArgonTheme v2.4.5 &nbsp;|&nbsp; OpenWrt 25.12.3-r32912-6639b15f62
+        </div>
+    </div>
+</div>
+
+<!-- ============ ROUTE / RULE MODAL ============ -->
+<div class="modal-backdrop" id="rt-modal" aria-hidden="true">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="rt-modal-title">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title" id="rt-modal-title">Routing</div>
+                <div class="modal-subtitle" id="rt-modal-subtitle"></div>
+            </div>
+            <button class="modal-close" type="button" aria-label="Close" onclick="closeRt()">&times;</button>
+        </div>
+
+        <div class="modal-tabs" id="rt-modal-tabs">
+            <div class="tabs">
+                <button class="tab active" id="rt-mtab-general" onclick="switchRtModalTab('general')">General Settings</button>
+                <button class="tab" id="rt-mtab-advanced" onclick="switchRtModalTab('advanced')">Advanced Settings</button>
+            </div>
+        </div>
+
+        <div class="modal-body">
+            <div id="rt-mview-general" class="tab-view active-view"></div>
+            <div id="rt-mview-advanced" class="tab-view"></div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn" onclick="closeRt()">Dismiss</button>
+            <button class="btn" onclick="saveRt()">Save</button>
+            <button class="btn btn-primary" onclick="saveRt()">Save &amp; Apply</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleMenu(menuId) {
+        var subMenu = document.getElementById(menuId);
+        var caret = document.getElementById(menuId.replace('-menu', '-menu-caret'));
+        if (!subMenu || !caret) return;
+        var isOpen = subMenu.classList.toggle('open');
+        caret.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+
+    // maps to: /etc/config/network  (config route / route6 / rule / rule6)
+    var RT = { r4: [], r6: [], u4: [], u6: [] };
+    var META = {
+        r4: { label: 'Static IPv4 Routes', ip: 4, rule: false },
+        r6: { label: 'Static IPv6 Routes', ip: 6, rule: false },
+        u4: { label: 'IPv4 Rules',         ip: 4, rule: true },
+        u6: { label: 'IPv6 Rules',         ip: 6, rule: true }
+    };
+    var IFACES = ['unspecified', 'lan', 'wan', 'eth4', 'eth5', 'eth6'];
+    var TABLES = ['unspecified', 'main', 'local', 'default'];
+    var ROUTE_TYPES = ['unicast', 'local', 'broadcast', 'multicast', 'unreachable', 'prohibit', 'blackhole', 'anycast', 'throw'];
+    var rtKind = null, rtIdx = null, rtLast = null;
+
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function dash(v) { return (v === '' || v == null) ? '-' : esc(v); }
+    function $(id) { return document.getElementById(id); }
+
+    // ---------- page tabs ----------
+    function switchRtTab(kind) {
+        Object.keys(META).forEach(function (k) {
+            $('rt-tab-' + k).classList.toggle('active', k === kind);
+            $('rt-view-' + k).classList.toggle('active-view', k === kind);
+        });
+    }
+
+    // ---------- tables ----------
+    function renderRt() {
+        Object.keys(META).forEach(function (kind) {
+            var meta = META[kind], list = RT[kind], cols = meta.rule ? 9 : 7;
+            $('rt-count-' + kind).textContent = list.length;
+            var body = $('rt-body-' + kind);
+            if (!list.length) {
+                body.innerHTML = '<tr class="dev-empty-row"><td colspan="' + cols + '">This section contains no values yet</td></tr>';
+                return;
+            }
+            body.innerHTML = list.map(function (r, n) {
+                var cells = meta.rule
+                    ? '<td>' + dash(r.prio) + '</td><td>' + dash(r.inIf) + '</td><td class="mono">' + dash(r.src) + '</td><td>' + dash(r.proto) + '</td><td>' + dash(r.outIf) + '</td><td class="mono">' + dash(r.dst) + '</td><td>' + dash(r.table) + '</td>'
+                    : '<td>' + dash(r.iface) + '</td><td class="mono">' + dash(r.target) + '</td><td class="mono">' + dash(r.gw) + '</td><td>' + dash(r.metric) + '</td><td>' + dash(r.table) + '</td>';
+                return '<tr class="' + (r.disabled ? 'rt-off' : '') + '">' + cells +
+                    '<td><label class="switch"><input type="checkbox"' + (r.disabled ? ' checked' : '') + ' onchange="rtDisable(\'' + kind + '\',' + n + ',this.checked)"><span class="slider"></span></label></td>' +
+                    '<td style="text-align:right;"><div class="dev-actions">' +
+                        '<button class="btn" onclick="openRt(\'' + kind + '\',' + n + ')">Edit</button>' +
+                        '<button class="btn btn-danger-outline" onclick="rtDelete(\'' + kind + '\',' + n + ')">Delete</button>' +
+                    '</div></td></tr>';
+            }).join('');
+        });
+    }
+    function rtDisable(kind, n, v) { RT[kind][n].disabled = v; renderRt(); }
+    function rtDelete(kind, n) {
+        if (!confirm('Delete this entry?')) return;
+        RT[kind].splice(n, 1);
+        renderRt();
+    }
+
+    // ---------- form helpers ----------
+    function f(label, control, hint, full) {
+        return '<div class="form-group' + (full ? ' full-width' : '') + '"><label>' + label + '</label>' + control + (hint ? '<div class="field-hint">' + hint + '</div>' : '') + '</div>';
+    }
+    function txt(id, v, ph) { return '<input type="text" id="' + id + '" value="' + esc(v) + '" placeholder="' + esc(ph || '') + '">'; }
+    function num(id, v, ph) { return '<input type="number" id="' + id + '" value="' + esc(v) + '" placeholder="' + esc(ph || '') + '">'; }
+    function sel(id, opts, val) { return '<select id="' + id + '">' + opts.map(function (o) { return '<option' + (o === val ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>'; }
+    function chk(id, label, checked, hint) {
+        return '<div class="form-group"><div class="switch-group"><label>' + label + '</label><label class="switch"><input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + '><span class="slider"></span></label></div>' + (hint ? '<div class="field-hint">' + hint + '</div>' : '') + '</div>';
+    }
+
+    // ---------- modal ----------
+    function openRt(kind, n) {
+        var meta = META[kind], isNew = (n === null), d = isNew ? {} : RT[kind][n];
+        rtKind = kind; rtIdx = n;
+
+        $('rt-modal-subtitle').textContent = (isNew ? 'Add ' : 'Edit ') + (meta.rule ? 'IPv' + meta.ip + ' rule' : 'static IPv' + meta.ip + ' route');
+        $('rt-modal-tabs').style.display = meta.rule ? 'none' : '';
+
+        if (!meta.rule) {
+            var noGw = meta.ip === 6 ? '::' : '0.0.0.0';
+            $('rt-mview-general').innerHTML =
+                '<div class="panel-card"><div class="panel-title">General Settings</div><div class="form-grid-2col">' +
+                    f('Interface', sel('rt-iface', IFACES, d.iface || 'unspecified'), 'Specifies the logical interface name of the parent (or master) interface this route belongs to') +
+                    f('Route type', sel('rt-type', ROUTE_TYPES, d.type || 'unicast'), 'Specifies the route type to be created') +
+                    f('Target', txt('rt-target', d.target, 'Network address')) +
+                    f('Gateway', txt('rt-gw', d.gw, ''), 'Specifies the network gateway. If omitted, the gateway from the parent interface is taken if any, otherwise creates a link scope route. If set to ' + noGw + ' no gateway will be specified for the route') +
+                '</div></div>';
+            $('rt-mview-advanced').innerHTML =
+                '<div class="panel-card"><div class="panel-title">Advanced Settings</div><div class="form-grid-2col">' +
+                    f('Metric', num('rt-metric', d.metric, ''), 'Ordinal: routes with the lowest metric match first') +
+                    f('MTU', num('rt-mtu', d.mtu, ''), 'Packets exceeding this value may be fragmented') +
+                    f('Table', sel('rt-table', TABLES, d.table || 'unspecified'),
+                        'Routing table into which to insert this rule.<br>A numeric table index, or symbol alias declared in <code>/etc/iproute2/rt_tables</code>. Special aliases local (255), main (254) and default (253) are also valid<br>Only interfaces using this table (via override) will use this route.', true) +
+                    f('Source', sel('rt-src', ['unspecified'].concat(meta.ip === 6 ? ['fd24:f746:ec57::1'] : ['192.168.2.1', '31.1.1.2']), d.src || 'unspecified'),
+                        'Specifies the preferred source address when sending to destinations covered by the target<br>This is only used if no default route matches the destination gateway', true) +
+                    chk('rt-onlink', 'On-link', d.onlink, 'When enabled, gateway is on-link even if the gateway does not match any interface prefix') +
+                '</div></div>';
+        } else {
+            $('rt-mview-general').innerHTML =
+                '<div class="panel-card"><div class="panel-title">Rule</div><div class="form-grid-2col">' +
+                    f('Priority', num('rt-prio', d.prio, '')) +
+                    f('IP Protocol', sel('rt-proto', ['all', 'tcp', 'udp', 'icmp'], d.proto || 'all')) +
+                    f('Incoming interface', sel('rt-inif', IFACES, d.inIf || 'unspecified')) +
+                    f('Outgoing interface', sel('rt-outif', IFACES, d.outIf || 'unspecified')) +
+                    f('Source', txt('rt-rsrc', d.src, meta.ip === 6 ? 'e.g. fd00::/64' : 'e.g. 192.168.2.0/24')) +
+                    f('Destination', txt('rt-dst', d.dst, meta.ip === 6 ? 'e.g. 2001:db8::/32' : 'e.g. 10.0.0.0/8')) +
+                    f('Table', sel('rt-rtable', TABLES, d.table || 'unspecified')) +
+                    chk('rt-rdisable', 'Disable', d.disabled) +
+                '</div></div>';
+            $('rt-mview-advanced').innerHTML = '';
+        }
+
+        switchRtModalTab('general');
+        document.querySelector('#rt-modal .modal-body').scrollTop = 0;
+        rtLast = document.activeElement;
+        var m = $('rt-modal');
+        m.classList.add('open');
+        m.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        m.querySelector('.modal-close').focus();
+    }
+
+    function switchRtModalTab(t) {
+        ['general', 'advanced'].forEach(function (x) {
+            $('rt-mtab-' + x).classList.toggle('active', x === t);
+            $('rt-mview-' + x).classList.toggle('active-view', x === t);
+        });
+    }
+
+    function closeRt() {
+        var m = $('rt-modal');
+        m.classList.remove('open');
+        m.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        if (rtLast && rtLast.focus) rtLast.focus();
+    }
+
+    // Mockup behaviour: stores entries in memory. Wire to uci/ubus later.
+    function saveRt() {
+        var meta = META[rtKind], entry;
+        function v(id) { return $(id).value.trim(); }
+        function pick(id) { var x = v(id); return x === 'unspecified' ? '' : x; }
+        if (!meta.rule) {
+            entry = { iface: pick('rt-iface'), type: v('rt-type'), target: v('rt-target'), gw: v('rt-gw'), metric: v('rt-metric'), mtu: v('rt-mtu'), table: pick('rt-table'), src: pick('rt-src'), onlink: $('rt-onlink').checked, disabled: false };
+        } else {
+            entry = { prio: v('rt-prio'), proto: v('rt-proto'), inIf: pick('rt-inif'), outIf: pick('rt-outif'), src: v('rt-rsrc'), dst: v('rt-dst'), table: pick('rt-rtable'), disabled: $('rt-rdisable').checked };
+        }
+        if (rtIdx === null) RT[rtKind].push(entry);
+        else { if (!meta.rule) entry.disabled = RT[rtKind][rtIdx].disabled; RT[rtKind][rtIdx] = entry; }
+        renderRt();
+        closeRt();
+    }
+
+    $('rt-modal').addEventListener('mousedown', function (e) { if (e.target === this) closeRt(); });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && $('rt-modal').classList.contains('open')) closeRt();
+    });
+
+    renderRt();
+</script>
+<script src="../shared/theme-clock.js"></script>
+</body>
+</html>

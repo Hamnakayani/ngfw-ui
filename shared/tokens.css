@@ -1,0 +1,65 @@
+/* ==========================================================================
+   NGFW UI — tokens.css
+   Design tokens (colors, spacing base) + reset. Include on every page,
+   before components.css.
+   ========================================================================== */
+
+:root {
+    color-scheme: light;
+    --bg-main: #f8fafc;
+    --bg-sidebar: #0f172a;
+    --bg-card: #ffffff;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --surface-alt: #f8fafc;
+    --surface-muted: #fbfdff;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --lan-bg: #dcfce7;
+    --lan-text: #15803d;
+    --wan-bg: #fee2e2;
+    --wan-text: #b91c1c;
+    --shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+body[data-theme="dark"] {
+    color-scheme: dark;
+    --bg-main: #020617;
+    --bg-sidebar: #020617;
+    --bg-card: #0f172a;
+    --text-main: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border-color: #1e293b;
+    --surface-alt: #111827;
+    --surface-muted: #0b1220;
+    --primary: #60a5fa;
+    --primary-hover: #3b82f6;
+    --success: #34d399;
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --lan-bg: #052e16;
+    --lan-text: #86efac;
+    --wan-bg: #450a0a;
+    --wan-text: #fda4af;
+    --shadow: 0 10px 30px rgba(2, 6, 23, 0.35);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}

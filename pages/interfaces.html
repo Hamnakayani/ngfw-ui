@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGFW - Interfaces</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../shared/tokens.css">
+    <link rel="stylesheet" href="../shared/components.css">
+    <style>
+        /* Page-scoped styles for the Interfaces page (uses shared theme variables). */
+        :root {
+            --if-navy: #14213d;
+            --if-navy-2: #1f3560;
+            --if-navy-grad: linear-gradient(135deg, var(--if-navy) 0%, var(--if-navy-2) 100%);
+            --if-green: #22a06b;
+            --if-shadow-sm: 0 1px 1px rgba(15, 23, 42, 0.06), 0 3px 6px rgba(15, 23, 42, 0.08), 0 8px 16px -4px rgba(15, 23, 42, 0.10);
+            --if-shadow-md: 0 2px 3px rgba(15, 23, 42, 0.08), 0 8px 16px rgba(15, 23, 42, 0.12), 0 22px 36px -8px rgba(15, 23, 42, 0.18);
+            --if-shadow-lg: 0 4px 8px rgba(15, 23, 42, 0.10), 0 24px 48px rgba(15, 23, 42, 0.22);
+            --if-shadow-modal: 0 2px 4px rgba(2, 6, 23, 0.2), 0 24px 48px rgba(2, 6, 23, 0.35), 0 60px 120px rgba(2, 6, 23, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+
+        /* ---------- Summary strip ---------- */
+        .if-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
+        .if-summary-tile {
+            display: flex; align-items: center; gap: 14px; padding: 16px 18px;
+            background: linear-gradient(180deg, var(--bg-card) 0%, var(--surface-alt) 100%);
+            border: 1px solid var(--border-color); border-radius: 14px;
+            box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -2px 0 rgba(0, 0, 0, 0.04);
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .if-summary-tile:hover { box-shadow: var(--if-shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.6); transform: translateY(-1px); }
+        .if-summary-icon {
+            flex: 0 0 auto; width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+            font-size: 17px; color: var(--text-muted);
+            background: linear-gradient(180deg, var(--bg-card), var(--surface-alt)); border: 1px solid var(--border-color);
+            box-shadow: 0 3px 6px rgba(15, 23, 42, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -2px 3px rgba(0, 0, 0, 0.08);
+        }
+        .if-summary-tile .n { font-size: 22px; font-weight: 700; color: var(--text-main); line-height: 1.1; letter-spacing: -0.3px; }
+        .if-summary-tile .l { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+        /* ---------- Card grid ---------- */
+        .if-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; margin-bottom: 20px; }
+        .if-card {
+            display: flex; flex-direction: column; overflow: hidden;
+            background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card) 60%, var(--surface-alt) 100%);
+            border: 1px solid color-mix(in srgb, var(--border-color) 80%, rgba(15, 23, 42, 0.25)); border-radius: 16px;
+            box-shadow: var(--if-shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .if-card:hover { box-shadow: var(--if-shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.7); transform: translateY(-3px); }
+        .if-card.is-down .if-port { filter: grayscale(1); opacity: 0.55; }
+
+        .if-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 14px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent); }
+        .if-port { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--if-navy); box-shadow: none; }
+        .if-port svg { width: 22px; height: 22px; }
+        .if-title { min-width: 0; flex: 1 1 auto; }
+        .if-name { font-size: 15.5px; font-weight: 600; color: var(--text-main); letter-spacing: -0.2px; line-height: 1.25; }
+        .if-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+        .if-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+        .if-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); opacity: 0.45; }
+        .if-status.up { color: var(--text-main); }
+        .if-status.up::before { background: var(--if-green); opacity: 1; box-shadow: 0 0 0 3px rgba(34, 160, 107, 0.16); }
+        .if-device-tag { font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 6px; padding: 2px 7px; }
+
+        .if-body { padding: 0 18px 14px; }
+        .if-rows { display: grid; grid-template-columns: auto 1fr; gap: 7px 16px; font-size: 13px; }
+        .if-rows .k { color: var(--text-muted); }
+        .if-rows .v { text-align: right; color: var(--text-main); font-weight: 500; }
+        .if-rows .v.mono, .mono { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12.5px; }
+        .if-bridge-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+
+        .if-io { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border-color); background: var(--surface-alt); box-shadow: inset 0 3px 6px -3px rgba(0, 0, 0, 0.16), inset 0 -1px 0 rgba(255, 255, 255, 0.5); }
+        .if-io > div { padding: 12px 18px; }
+        .if-io > div + div { border-left: 1px solid var(--border-color); }
+        .if-io-label { font-size: 11.5px; color: var(--text-muted); }
+        .if-io-value { font-size: 14px; font-weight: 600; color: var(--text-main); margin-top: 2px; letter-spacing: -0.1px; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4); }
+        .if-io-pkts { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+
+        .if-details { display: none; padding: 12px 18px 14px; border-top: 1px solid var(--border-color); background: var(--surface-alt); box-shadow: inset 0 3px 6px -4px rgba(0, 0, 0, 0.12); }
+        .if-card.expanded .if-details { display: block; }
+
+        .if-foot {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto;
+            padding: 10px 12px 10px 18px; border-top: 1px solid var(--border-color);
+            background: linear-gradient(180deg, var(--surface-alt), color-mix(in srgb, var(--surface-alt) 88%, rgba(15, 23, 42, 0.12)));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        }
+        .if-details-toggle { font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 5px; }
+        .if-details-toggle:hover { color: var(--text-main); }
+        .if-details-toggle .chevron { transition: transform 0.15s ease; font-size: 10px; }
+        .if-card.expanded .if-details-toggle .chevron { transform: rotate(90deg); }
+        .if-actions { display: flex; gap: 6px; }
+        .if-actions .btn {
+            padding: 5px 11px; font-size: 12px;
+            background: linear-gradient(180deg, var(--bg-card), var(--surface-alt));
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 3px 6px -2px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+        .if-actions .btn:hover { box-shadow: var(--if-shadow-md); }
+        .if-actions .btn:active { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18); transform: translateY(1px); }
+
+        /* Devices tab */
+        .dev-type-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: var(--surface-alt); border: 1px solid var(--border-color); color: var(--text-muted); }
+        .table-scroll { border-radius: 14px; box-shadow: var(--if-shadow-md); }
+        .data-table tbody tr { transition: background 0.12s ease; }
+        .data-table tbody tr:hover { background: var(--surface-alt); }
+        .dev-name-row { display: flex; align-items: center; gap: 8px; }
+        .dev-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); opacity: 0.45; flex: 0 0 auto; }
+        .dev-dot.up { background: var(--if-green); opacity: 1; box-shadow: 0 0 0 3px rgba(34, 160, 107, 0.16); }
+        .dev-name { font-weight: 600; color: var(--text-main); }
+        .dev-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; padding-left: 15px; }
+        .dev-actions { display: inline-flex; gap: 6px; justify-content: flex-end; }
+        .dev-actions .btn { padding: 5px 12px; font-size: 12px; }
+        .dev-actions .btn[disabled] { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+        tr.dev-unconfigured .dev-name, tr.dev-unconfigured td.mono { opacity: 0.6; }
+        .dev-ports { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; padding: 10px; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06); }
+        .dev-port { display: flex; align-items: center; gap: 7px; padding: 7px 10px; font-size: 13px; color: var(--text-main); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 9px; cursor: pointer; box-shadow: var(--if-shadow-sm); }
+        .dev-port input { margin: 0; }
+        .dev-vlan-input { width: 110px; }
+        .dev-empty-row td { text-align: center; color: var(--text-muted); font-style: italic; }
+
+        /* Panels, global options */
+        .panel-card { background: linear-gradient(180deg, var(--bg-card), color-mix(in srgb, var(--bg-card) 94%, var(--surface-alt))); box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+        .view-footer-actions .btn-primary, .modal-footer .btn-primary {
+            background: var(--if-navy-grad); border-color: var(--if-navy); color: #fff;
+            box-shadow: 0 8px 16px -4px rgba(20, 33, 61, 0.55), 0 2px 3px rgba(20, 33, 61, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .dyn-list { display: flex; flex-direction: column; gap: 8px; }
+        .dyn-row { display: flex; gap: 8px; }
+        .dyn-row input { flex: 1 1 auto; }
+        .dyn-row .btn { flex: 0 0 auto; padding: 6px 12px; }
+        .field-hint code { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 11.5px; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 5px; padding: 1px 5px; }
+        .field-hint a { color: var(--primary); }
+
+        /* ---------- Modal ---------- */
+        body.modal-open { overflow: hidden; }
+        .modal-backdrop {
+            position: fixed; inset: 0; z-index: 1000; display: none; align-items: center; justify-content: center; padding: 24px;
+            background: rgba(8, 12, 24, 0.55); -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%);
+        }
+        .modal-backdrop.open { display: flex; animation: modal-fade 0.18s ease-out; }
+        .modal-dialog {
+            display: flex; flex-direction: column; width: 100%; max-width: 1200px; height: min(860px, calc(100vh - 48px));
+            background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 18px;
+            box-shadow: var(--if-shadow-modal); overflow: hidden; animation: modal-pop 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+        }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 28px 0 28px; background: linear-gradient(180deg, var(--surface-alt) 0%, var(--bg-card) 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+        .modal-title { font-size: 20px; font-weight: 700; letter-spacing: -0.2px; }
+        .modal-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .modal-close {
+            flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; cursor: pointer; display: grid; place-items: center; font-size: 18px; line-height: 1;
+            background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-color); box-shadow: var(--if-shadow-sm); transition: color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .modal-close:hover { color: var(--text-main); box-shadow: var(--if-shadow-md); }
+        .modal-tabs { background: var(--bg-card); border-bottom: 1px solid var(--border-color); box-shadow: 0 6px 10px -8px rgba(0, 0, 0, 0.25); position: relative; z-index: 1; }
+        .modal-tabs .tabs { margin-bottom: 0; }
+        .modal-body { flex: 1 1 auto; overflow-y: auto; padding: 24px 28px; background: var(--surface-alt); box-shadow: inset 0 6px 8px -8px rgba(0, 0, 0, 0.25), inset 0 -6px 8px -8px rgba(0, 0, 0, 0.25); }
+        .modal-body .panel-card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 6px 14px -4px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.7); }
+        .modal-body .panel-card:last-child { margin-bottom: 0; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 28px; background: linear-gradient(180deg, var(--bg-card), var(--surface-alt)); border-top: 1px solid var(--border-color); box-shadow: 0 -10px 18px -12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+        @keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modal-pop { from { opacity: 0; transform: translateY(14px) scale(0.97); } to { opacity: 1; transform: none; } }
+        @media (max-width: 900px) { .if-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 600px) { .modal-backdrop { padding: 0; align-items: flex-end; } .modal-dialog { height: 94vh; max-width: none; border-radius: 18px 18px 0 0; } }
+        @media (prefers-reduced-motion: reduce) { .modal-backdrop.open, .modal-dialog { animation: none; } .if-card, .if-summary-tile, .if-actions .btn { transition: none; } }
+
+/* Paste at the END of the <style> block in interfaces.html (after ".field-hint a { ... }") */
+
+/* ---------- Refinement pass (same as network-firewall.html) ---------- */
+::selection { background: color-mix(in srgb, var(--if-navy-2) 25%, transparent); }
+body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+.mono, .if-io-value, .if-summary-tile .n, .data-table td { font-variant-numeric: tabular-nums; }
+
+/* Tabs: segmented control */
+.tabs {
+    display: inline-flex; gap: 4px; padding: 4px; max-width: 100%; overflow-x: auto;
+    background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 12px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+.tabs .tab {
+    border: none; border-bottom: none; background: transparent; border-radius: 9px;
+    padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap;
+    cursor: pointer; box-shadow: none; transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.tabs .tab::after { display: none; }
+.tabs .tab:hover { color: var(--text-main); }
+.tabs .tab.active {
+    background: var(--bg-card); color: var(--text-main);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 4px 10px -3px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+.modal-tabs { padding: 14px 28px; }
+
+/* Forms */
+.form-grid-2col { gap: 18px 24px; }
+.form-group > label { display: block; font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; }
+.field-hint { font-size: 12px; line-height: 1.55; color: var(--text-muted); margin-top: 6px; }
+.form-group input[type="text"], .form-group input[type="number"], .form-group input[type="password"], .form-group select {
+    min-height: 38px; border-radius: 10px; font-size: 13.5px;
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.07);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.form-group input:focus, .form-group select:focus {
+    outline: none; border-color: var(--if-navy-2);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--if-navy-2) 22%, transparent), inset 0 1px 2px rgba(15, 23, 42, 0.07);
+}
+.form-group input::placeholder { color: var(--text-muted); opacity: 0.65; }
+.panel-title { font-size: 14px; font-weight: 700; letter-spacing: -0.1px; padding-bottom: 12px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); }
+
+/* Switches: navy when on */
+.switch input:checked + .slider { background: var(--if-navy-2); }
+
+/* Buttons */
+.btn { font-weight: 600; border-radius: 10px; transition: box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease, border-color 0.15s ease; }
+.btn:active { transform: translateY(1px); }
+.modal-footer .btn { min-width: 96px; }
+.btn:focus-visible, .tabs .tab:focus-visible, .modal-close:focus-visible, .if-details-toggle:focus-visible { outline: 2px solid var(--if-navy-2); outline-offset: 2px; }
+.switch input:focus-visible + .slider { outline: 2px solid var(--if-navy-2); outline-offset: 2px; }
+
+/* Tables */
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.data-table thead th {
+    background: var(--surface-alt); color: var(--text-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.2px;
+    text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--border-color); white-space: nowrap;
+}
+.data-table tbody td { padding: 13px 16px; font-size: 13px; vertical-align: middle; border-bottom: 1px solid var(--border-color); }
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table td, .data-table th { overflow-wrap: anywhere; }
+.dev-actions { white-space: nowrap; flex-wrap: wrap; row-gap: 6px; }
+.dev-empty-row td { padding: 34px 16px; font-size: 13px; }
+.panel-card .table-scroll { box-shadow: none; border: 1px solid var(--border-color); border-radius: 12px; }
+
+/* Scrollbars inside popups */
+.modal-body { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text-muted) 45%, transparent) transparent; }
+.modal-body::-webkit-scrollbar { width: 10px; }
+.modal-body::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text-muted) 40%, transparent); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+
+/* ---------- Intro cards, titled sections, Add buttons ---------- */
+.fw-title { font-size: 15px; font-weight: 700; letter-spacing: -0.1px; color: var(--text-main); margin-bottom: 8px; }
+.fw-count { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-left: auto; }
+.dh-intro { margin-bottom: 20px; padding: 18px 22px; }
+.dh-intro p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.65; color: var(--text-muted); }
+.dh-intro p:last-child { margin-bottom: 0; }
+.dh-intro code, .panel-card p code { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12px; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 5px; padding: 1px 5px; }
+
+/* Small navy touch: flat icon tile before section titles */
+.panel-title.dh-ico { display: flex; align-items: center; gap: 10px; }
+.panel-title.dh-ico::before {
+    content: ''; flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px;
+    background: var(--if-navy) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 6h16M4 12h16M4 18h10'/%3E%3C/svg%3E") center / 15px no-repeat;
+}
+.panel-title > .btn-primary {
+    margin-left: 14px; padding: 6px 18px; font-size: 12.5px;
+    background: var(--if-navy-grad); border-color: var(--if-navy); color: #fff;
+    box-shadow: 0 6px 14px -4px rgba(20, 33, 61, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -2px 4px rgba(0, 0, 0, 0.18);
+}
+
+/* One fixed popup size for every tab / record (replaces the old .modal-dialog size) */
+.modal-dialog { max-width: 1200px; height: min(860px, calc(100vh - 48px)); }
+@media (max-width: 600px) { .modal-dialog { height: 94vh; max-width: none; } }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="brand">NGFW</div>
+    <a class="menu-item" href="status.html">Dashboard</a>
+    <div class="menu-item" onclick="toggleMenu('status-menu');"><span>Status</span><span class="caret" id="status-menu-caret">▸</span></div>
+    <div class="sub-menu" id="status-menu">
+        <a class="menu-item" href="status.html">Overview</a>
+        <a class="menu-item" href="routing.html">Routing</a>
+        <a class="menu-item" href="firewall.html">Firewall</a>
+        <a class="menu-item" href="logs.html">System Logs</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('system-menu');"><span>System</span><span class="caret" id="system-menu-caret">▸</span></div>
+    <div class="sub-menu" id="system-menu">
+        <a class="menu-item" href="system.html">System</a>
+        <a class="menu-item" href="administration.html">Administration</a>
+        <a class="menu-item" href="software.html">Software</a>
+        <a class="menu-item" href="startup.html">Startup</a>
+        <a class="menu-item" href="scheduled.html">Scheduled Tasks</a>
+        <a class="menu-item" href="backup.html">Backup / Flash Firmware</a>
+        <a class="menu-item" href="reboot.html">Reboot</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('network-menu');"><span>Network</span><span class="caret" id="network-menu-caret">▸</span></div>
+    <div class="sub-menu open" id="network-menu">
+        <a class="menu-item active" href="interfaces.html">Interfaces</a>
+        <a class="menu-item" href="network-routing.html">Routing</a>
+        <a class="menu-item" href="dhcp.html">DHCP</a>
+        <a class="menu-item" href="dns.html">DNS</a>
+        <a class="menu-item" href="diagnostics.html">Diagnostics</a>
+        <a class="menu-item" href="network-firewall.html">Firewall</a>
+    </div>
+    <a href="#" class="menu-item" style="margin-top: auto;">Log out</a>
+</div>
+
+<div class="main-content">
+    <div class="top-header">
+        <div class="header-left"><div class="page-title" id="page-title-heading">Interfaces</div></div>
+        <div class="header-right">
+            <div class="time-display" id="liveTime">--:--:--</div>
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color theme">
+                <span id="themeIcon"></span><span id="themeLabel">Dark</span>
+            </button>
+            <div class="status-badge">● Refreshing</div>
+        </div>
+    </div>
+
+    <div class="page-container" id="view-list">
+        <div class="tabs" style="margin-bottom:20px;">
+            <button class="tab active" id="net-tab-interfaces" onclick="switchNetTab('interfaces')">Interfaces</button>
+            <button class="tab" id="net-tab-devices" onclick="switchNetTab('devices')">Devices</button>
+            <button class="tab" id="net-tab-global" onclick="switchNetTab('global')">Global network options</button>
+        </div>
+
+        <!-- INTERFACES: /etc/config/network + ubus call network.interface dump -->
+        <div id="net-view-interfaces" class="tab-view active-view">
+            <!-- <div class="panel-card dh-intro"><div class="fw-title">Network - Interfaces</div><p>Interfaces are logical network configurations bound to physical or virtual devices. Each one can have its own addressing, firewall zone and DHCP server.</p></div> -->
+            <div class="if-summary" id="if-summary"></div>
+            <div class="panel-title dh-ico">Interfaces<span class="fw-count" id="count-if"></span><button class="btn btn-primary" onclick="openEdit('new')">Add</button></div>
+            <div class="if-grid" id="interface-cards"></div>
+        </div>
+
+        <!-- DEVICES: ubus call network.device dump -->
+        <div id="net-view-devices" class="tab-view">
+            <!-- <div class="panel-card dh-intro"><div class="fw-title">Network - Devices</div><p>Devices are the physical and virtual network devices on this system, such as ports, bridges and VLANs. Configure a device to change its MTU, MAC address or bridge membership.</p></div> -->
+            <div class="panel-card">
+                <div class="panel-title dh-ico">Devices<span class="fw-count" id="count-dev"></span><button class="btn btn-primary" onclick="openAddDev()">Add</button></div>
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead><tr><th>Device</th><th>Type</th><th>MAC Address</th><th>MTU</th><th style="text-align:right;">Actions</th></tr></thead>
+                        <tbody id="devices-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- GLOBAL NETWORK OPTIONS: /etc/config/network (config globals) -->
+        <div id="net-view-global" class="tab-view">
+            <!-- <div class="panel-card dh-intro"><div class="fw-title">Network - Global network options</div><p>These settings apply to the whole network stack rather than to a single interface.</p></div> -->
+            <div class="panel-card">
+                <div class="panel-title dh-ico">Addressing</div>
+                <div class="form-grid-2col">
+                    <div class="form-group full-width">
+                        <label>IPv6 ULA-Prefix</label>
+                        <input type="text" value="fd24:f746:ec57::/48">
+                        <div class="field-hint">Unique Local Address (<a href="https://datatracker.ietf.org/doc/html/rfc4193#section-3" target="_blank" rel="noopener">RFC4193</a>) - prefix <code>fd00::/8</code> (the L bit is always 1). ULA for IPv6 is analogous to IPv4 private network addressing. This prefix is randomly generated at first install.</div>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Default DUID</label>
+                        <input type="text" value="000412a7c3e94b1f8d2e6a05b7c9f3d1e824" style="font-family: 'SFMono-Regular', Consolas, Menlo, monospace;">
+                        <div class="field-hint">The default DUID for this device, used when acting as a DHCP server or client. The client identifier can be overridden on a per-interface basis.<br>This identifier is randomly generated the first time the device is booted.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-title dh-ico">Multi-Path TCP &amp; VRF</div>
+                <div class="form-grid-2col">
+                    <div class="form-group full-width">
+                        <label>Multi-Path TCP</label>
+                        <select><option selected>Off</option><option>On</option></select>
+                        <div class="field-hint">For packets originating from this device, e.g. VPN.</div>
+                    </div>
+                    <div class="form-group">
+                        <div class="switch-group"><label>TCP Layer 3 Master Device (tcp_l3mdev) accept</label><label class="switch"><input type="checkbox"><span class="slider"></span></label></div>
+                        <div class="field-hint">TCP services running on this device in the default VRF context (ie., not bound to any VRF device) shall work across all VRF domains.<br>Off means VRF traffic will be handled exclusively by sockets bound to VRFs.</div>
+                    </div>
+                    <div class="form-group">
+                        <div class="switch-group"><label>UDP Layer 3 Master Device (udp_l3mdev) accept</label><label class="switch"><input type="checkbox"><span class="slider"></span></label></div>
+                        <div class="field-hint">UDP services running on this device in the default VRF context (ie., not bound to any VRF device) shall work across all VRF domains.<br>Off means VRF traffic will be handled exclusively by sockets bound to VRFs.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-title dh-ico">Packet steering</div>
+                <div class="form-grid-2col">
+                    <div class="form-group full-width">
+                        <label>Packet Steering</label>
+                        <select><option selected>-- Please choose --</option><option>Disabled</option><option>Enabled</option><option>Enabled (all CPUs)</option></select>
+                        <div class="field-hint">Enable packet steering across CPUs. May help or hinder network speed.</div>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Steering flows (RPS)</label>
+                        <div class="dyn-list" id="rps-list">
+                            <div class="dyn-row"><input type="text" placeholder="Standard: none"><button class="btn" type="button" onclick="removeRpsRow(this)" aria-label="Remove">&times;</button></div>
+                        </div>
+                        <button class="btn" type="button" onclick="addRpsRow()" style="align-self:flex-start; margin-top:8px;">Add entry</button>
+                        <div class="field-hint">Directs packet flows to specific CPUs where the local socket owner listens (the local service). Note: this setting is for local services on the device only (not for forwarding).</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="view-footer-actions"><button class="btn">Reset</button><button class="btn btn-primary">Save &amp; Apply</button></div>
+        <div class="floating-save-bar">
+            <button class="btn btn-primary" style="padding: 6px 12px; font-size:12px;">Save &amp; Apply</button>
+        </div>
+        <div class="page-footer">
+            Powered by LuCI (HEAD detached at 650a6ca3) branch (26.124.63982~650a6ca) &nbsp;|&nbsp; ArgonTheme v2.4.5 &nbsp;|&nbsp; OpenWrt 25.12.3-r32912-6639b15f62
+        </div>
+    </div>
+</div>
+
+<!-- EDIT / ADD INTERFACE MODAL -->
+<div class="modal-backdrop" id="edit-modal" aria-hidden="true">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-header">
+            <div><div class="modal-title" id="modal-title">Edit interface</div><div class="modal-subtitle" id="modal-subtitle"></div></div>
+            <button class="modal-close" type="button" aria-label="Close" onclick="closeEdit()">&times;</button>
+        </div>
+        <div class="modal-tabs"><div class="tabs">
+            <button class="tab active" id="if-tab-general" onclick="switchIfTab('general')">General Settings</button>
+            <button class="tab" id="if-tab-advanced" onclick="switchIfTab('advanced')">Advanced Settings</button>
+            <button class="tab" id="if-tab-firewall" onclick="switchIfTab('firewall')">Firewall Settings</button>
+            <button class="tab" id="if-tab-dhcp" onclick="switchIfTab('dhcp')">DHCP Server</button>
+        </div></div>
+        <div class="modal-body">
+            <div id="if-view-general" class="tab-view active-view"></div>
+            <div id="if-view-advanced" class="tab-view"></div>
+            <div id="if-view-firewall" class="tab-view"></div>
+            <div id="if-view-dhcp" class="tab-view"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeEdit()">Dismiss</button>
+            <button class="btn" onclick="closeEdit()">Save</button>
+            <button class="btn btn-primary" onclick="closeEdit()">Save &amp; Apply</button>
+        </div>
+    </div>
+</div>
+
+<!-- CONFIGURE DEVICE MODAL -->
+<div class="modal-backdrop" id="dev-modal" aria-hidden="true">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="dev-modal-title">
+        <div class="modal-header">
+            <div><div class="modal-title" id="dev-modal-title">Configure device</div><div class="modal-subtitle" id="dev-modal-subtitle"></div></div>
+            <button class="modal-close" type="button" aria-label="Close" onclick="closeDev()">&times;</button>
+        </div>
+        <div class="modal-tabs"><div class="tabs">
+            <button class="tab active" id="dev-tab-general" onclick="switchDevTab('general')">General device options</button>
+            <button class="tab" id="dev-tab-advanced" onclick="switchDevTab('advanced')">Advanced device options</button>
+            <button class="tab" id="dev-tab-vlan" onclick="switchDevTab('vlan')">Bridge VLAN filtering</button>
+        </div></div>
+        <div class="modal-body">
+            <div id="dev-view-general" class="tab-view active-view"></div>
+            <div id="dev-view-advanced" class="tab-view"></div>
+            <div id="dev-view-vlan" class="tab-view"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeDev()">Dismiss</button>
+            <button class="btn" onclick="saveDev()">Save</button>
+            <button class="btn btn-primary" onclick="saveDev()">Save &amp; Apply</button>
+        </div>
+    </div>
+</div>
+
+<!-- ADD DEVICE CONFIGURATION MODAL -->
+<div class="modal-backdrop" id="add-dev-modal" aria-hidden="true">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="add-dev-title">
+        <div class="modal-header">
+            <div><div class="modal-title" id="add-dev-title">Add device configuration</div><div class="modal-subtitle">Create or override the settings of a network device</div></div>
+            <button class="modal-close" type="button" aria-label="Close" onclick="closeAddDev()">&times;</button>
+        </div>
+        <div class="modal-tabs"><div class="tabs">
+            <button class="tab active" id="add-tab-general" onclick="switchAddTab('general')">General device options</button>
+            <button class="tab" id="add-tab-advanced" onclick="switchAddTab('advanced')">Advanced device options</button>
+        </div></div>
+        <div class="modal-body">
+            <div id="add-view-general" class="tab-view active-view"></div>
+            <div id="add-view-advanced" class="tab-view"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeAddDev()">Dismiss</button>
+            <button class="btn" onclick="saveAddDev()">Save</button>
+            <button class="btn btn-primary" onclick="saveAddDev()">Save &amp; Apply</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleMenu(menuId) {
+        var subMenu = document.getElementById(menuId);
+        var caret = document.getElementById(menuId.replace('-menu', '-menu-caret'));
+        if (!subMenu || !caret) return;
+        var isOpen = subMenu.classList.toggle('open');
+        caret.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+
+    // One entry per logical interface. Replace with live ubus data later.
+    function IF(o) {
+        var d = { role: 'other', type: 'Ethernet Adapter', connected: true, rxBytes: 0, rxPkts: '0 Pkts.', txBytes: 0, txPkts: '0 Pkts.', proto: 'Static address', carrier: 'Absent', uptime: '2h 37m 12s', netmask: '255.255.255.0', gateway: '31.1.1.100 (wan)' };
+        for (var k in o) d[k] = o[k];
+        d.ipv4 = d.ipv4 || (d.ip ? d.ip + '/24' : '-');
+        return d;
+    }
+    var INTERFACES = {
+        eth4: IF({ name: 'eth4', device: 'eth4', mac: '00:90:0B:B7:10:93', ip: '91.1.1.3', broadcast: '91.1.1.255' }),
+        eth5: IF({ name: 'eth5', device: 'eth5', mac: '00:90:0B:B7:10:94', ip: '91.1.1.2', broadcast: '91.1.1.255' }),
+        eth6: IF({ name: 'eth6', device: 'eth6', mac: '00:90:0B:B7:10:95', ip: '91.1.1.1', broadcast: '91.1.1.255' }),
+        lan: IF({ name: 'lan', role: 'lan', type: 'Bridge', device: 'br-lan', mac: '00:90:0B:B7:10:8F', uptime: '2h 37m 13s', ip: '192.168.2.1', ipv6: 'fd24:f746:ec57::1/60', gateway: '', broadcast: '192.168.2.255', members: ['eth0', 'eth1', 'eth2', 'eth3'] }),
+        wan: IF({ name: 'wan', role: 'wan', device: 'eth7', mac: '00:90:0B:B7:10:96', rxBytes: 1855979, rxPkts: '12396 Pkts.', txBytes: 7351859, txPkts: '5529 Pkts.', carrier: 'Present', ip: '31.1.1.2', gateway: '31.1.1.100', broadcast: '31.1.1.255' }),
+        'new': IF({ name: '', device: '', connected: false, mac: '-', uptime: '-', ip: '', ipv4: '-', gateway: '', broadcast: '' })
+    };
+    var ORDER = ['eth4', 'eth5', 'eth6', 'lan', 'wan'];
+    var EXPANDED = {};
+
+    // Raw physical/virtual devices (Devices tab).
+    function DV(name, type, mac, extra) {
+        var d = { name: name, type: type, mac: mac, mtu: 1500, connected: true, rx: '0 B', rxPkts: '0 Pkts.', tx: '0 B', txPkts: '0 Pkts.', configured: true };
+        for (var k in extra) d[k] = extra[k];
+        return d;
+    }
+    var DEVICES = [
+        DV('br-lan', 'Bridge device', '00:90:0B:B7:0B:18', { ports: ['eth1', 'eth2'] }),
+        DV('eth0', 'Network device', '00:90:0B:B7:0B:17'),
+        DV('eth1', 'Network device', '00:90:0B:B7:0B:18'),
+        DV('eth2', 'Network device', '00:90:0B:B7:0B:19'),
+        DV('eth3', 'Network device', '00:90:0B:B7:0B:1A'),
+        DV('eth4', 'Network device', '00:90:0B:B7:0B:1B'),
+        DV('eth5', 'Network device', '00:90:0B:B7:0B:1C'),
+        DV('eth6', 'Network device', '00:90:0B:B7:0B:1D'),
+        DV('eth7', 'Network device', '00:90:0B:B7:0B:1E', { rx: '10.74 MB', rxPkts: '87758 Pkts.', tx: '29.41 MB', txPkts: '21069 Pkts.' })
+    ];
+
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function fmtBytes(n) {
+        if (!n) return '0 B';
+        var u = ['B', 'KB', 'MB', 'GB'], i = 0;
+        while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+        return (i === 0 ? n : n.toFixed(2)) + ' ' + u[i];
+    }
+    function countText(n) { return n + (n === 1 ? ' entry' : ' entries'); }
+
+    function switchNetTab(t) {
+        ['interfaces', 'devices', 'global'].forEach(function (x) {
+            document.getElementById('net-tab-' + x).classList.toggle('active', x === t);
+            document.getElementById('net-view-' + x).classList.toggle('active-view', x === t);
+        });
+    }
+
+    function renderSummary() {
+        var list = ORDER.map(function (k) { return INTERFACES[k]; });
+        var up = list.filter(function (i) { return i.connected; }).length;
+        var rx = list.reduce(function (a, i) { return a + i.rxBytes; }, 0);
+        var tx = list.reduce(function (a, i) { return a + i.txBytes; }, 0);
+        function tile(icon, n, l) { return '<div class="if-summary-tile"><div class="if-summary-icon">' + icon + '</div><div><div class="n">' + n + '</div><div class="l">' + l + '</div></div></div>'; }
+        document.getElementById('if-summary').innerHTML =
+            tile('&#9635;', list.length, 'Total interfaces') + tile('&#10003;', up, 'Connected') +
+            tile('&#10005;', list.length - up, 'Not connected') + tile('&#8645;', fmtBytes(rx) + ' / ' + fmtBytes(tx), 'Total RX / TX');
+    }
+
+    var PORT = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v8h-3v3H7v-3H4z"/><path d="M8.5 10.5v2M11 10.5v2M13.5 10.5v2M16 10.5v2"/></svg>';
+
+    function renderCards() {
+        document.getElementById('interface-cards').innerHTML = ORDER.map(function (k) {
+            var i = INTERFACES[k];
+            var bridgeRow = i.members ? '<div class="if-bridge-row">' + i.members.map(function (m) { return '<span class="if-device-tag">' + m + '</span>'; }).join('') + '</div>' : '';
+            return '<div class="if-card' + (i.connected ? '' : ' is-down') + (EXPANDED[k] ? ' expanded' : '') + '" id="if-card-' + k + '">' +
+                '<div class="if-head"><div class="if-port">' + PORT + '</div>' +
+                    '<div class="if-title"><div class="if-name">' + esc(i.name) + '</div><div class="if-sub">' + esc(i.device) + ' &middot; ' + esc(i.type) + '</div></div>' +
+                    '<span class="if-status ' + (i.connected ? 'up' : 'down') + '">' + (i.connected ? 'Connected' : 'Not connected') + '</span></div>' +
+                '<div class="if-body"><div class="if-rows">' +
+                    '<span class="k">IPv4</span><span class="v mono">' + esc(i.ipv4) + '</span>' +
+                    '<span class="k">Gateway</span><span class="v mono">' + esc(i.gateway || '-') + '</span>' +
+                    '<span class="k">Protocol</span><span class="v">' + esc(i.proto) + '</span></div>' + bridgeRow + '</div>' +
+                '<div class="if-io">' +
+                    '<div><div class="if-io-label">&#8595; Received</div><div class="if-io-value">' + fmtBytes(i.rxBytes) + '</div><div class="if-io-pkts">' + esc(i.rxPkts) + '</div></div>' +
+                    '<div><div class="if-io-label">&#8593; Sent</div><div class="if-io-value">' + fmtBytes(i.txBytes) + '</div><div class="if-io-pkts">' + esc(i.txPkts) + '</div></div></div>' +
+                '<div class="if-details"><div class="if-rows">' +
+                    '<span class="k">MAC</span><span class="v mono">' + esc(i.mac) + '</span>' +
+                    '<span class="k">Carrier</span><span class="v">' + esc(i.carrier) + '</span>' +
+                    '<span class="k">Uptime</span><span class="v">' + esc(i.uptime) + '</span>' +
+                    '<span class="k">Netmask</span><span class="v mono">' + esc(i.netmask) + '</span>' +
+                    '<span class="k">Broadcast</span><span class="v mono">' + esc(i.broadcast || '-') + '</span>' +
+                    (i.ipv6 ? '<span class="k">IPv6</span><span class="v mono">' + esc(i.ipv6) + '</span>' : '') + '</div></div>' +
+                '<div class="if-foot">' +
+                    '<div class="if-details-toggle" onclick="toggleDetails(\'' + k + '\')"><span class="chevron">&#9656;</span> Details</div>' +
+                    '<div class="if-actions">' +
+                        '<button class="btn" onclick="ifAction(\'' + k + '\', \'restart\')">Restart</button>' +
+                        '<button class="btn" onclick="ifAction(\'' + k + '\', \'stop\')">Stop</button>' +
+                        '<button class="btn" onclick="openEdit(\'' + k + '\')">Edit</button>' +
+                        '<button class="btn btn-danger-outline" onclick="ifAction(\'' + k + '\', \'delete\')">Delete</button>' +
+                    '</div></div></div>';
+        }).join('');
+        document.getElementById('count-if').textContent = countText(ORDER.length);
+        renderSummary();
+    }
+
+    function toggleDetails(k) {
+        EXPANDED[k] = !EXPANDED[k];
+        document.getElementById('if-card-' + k).classList.toggle('expanded', EXPANDED[k]);
+    }
+
+    // Mockup behaviour only. Wire to ifup/ifdown/ubus network.interface later.
+    function ifAction(key, kind) {
+        var i = INTERFACES[key];
+        if (kind === 'delete') {
+            if (!confirm('Delete interface "' + i.name + '"? This cannot be undone.')) return;
+            delete INTERFACES[key];
+            ORDER = ORDER.filter(function (k) { return k !== key; });
+            renderCards();
+            return;
+        }
+        if (kind === 'stop') { i.connected = false; i.carrier = 'Absent'; }
+        if (kind === 'restart') { i.connected = true; i.carrier = key === 'wan' ? 'Present' : i.carrier; }
+        renderCards();
+    }
+
+    function renderDevices() {
+        document.getElementById('devices-body').innerHTML = DEVICES.map(function (d, idx) {
+            return '<tr class="' + (d.configured ? '' : 'dev-unconfigured') + '">' +
+                '<td><div class="dev-name-row"><span class="dev-dot ' + (d.connected ? 'up' : '') + '"></span><span class="dev-name mono">' + esc(d.name) + '</span></div>' +
+                    '<div class="dev-sub">RX ' + esc(d.rx) + ' (' + esc(d.rxPkts) + ') &middot; TX ' + esc(d.tx) + ' (' + esc(d.txPkts) + ')</div></td>' +
+                '<td><span class="dev-type-badge">' + esc(d.type) + '</span></td>' +
+                '<td class="mono">' + esc(d.mac) + '</td><td>' + d.mtu + '</td>' +
+                '<td style="text-align:right;"><div class="dev-actions">' +
+                    '<button class="btn" onclick="openDevEdit(' + idx + ')">Configure</button>' +
+                    '<button class="btn btn-danger-outline"' + (d.configured ? '' : ' disabled') + ' onclick="unconfigureDev(' + idx + ')">Unconfigure</button>' +
+                '</div></td></tr>';
+        }).join('');
+        document.getElementById('count-dev').textContent = countText(DEVICES.length);
+    }
+
+    function unconfigureDev(idx) {
+        if (!confirm('Unconfigure device "' + DEVICES[idx].name + '"? Its custom settings will be removed.')) return;
+        DEVICES[idx].configured = false;
+        renderDevices();
+    }
+
+    // ---------- FORM HELPERS ----------
+    function field(label, control, hint, full) {
+        return '<div class="form-group' + (full ? ' full-width' : '') + '"><label>' + label + '</label>' + control + (hint ? '<div class="field-hint">' + hint + '</div>' : '') + '</div>';
+    }
+    function input(v, ph) { return '<input type="text" value="' + (v || '') + '" placeholder="' + (ph || '') + '">'; }
+    function num(v) { return '<input type="number" value="' + v + '">'; }
+    function select(opts, val) { return '<select>' + opts.map(function (o) { return '<option' + (o === val ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>'; }
+    function toggle(label, checked, hint) {
+        return '<div class="form-group"><div class="switch-group"><label>' + label + '</label><label class="switch"><input type="checkbox"' + (checked ? ' checked' : '') + '><span class="slider"></span></label></div>' + (hint ? '<div class="field-hint">' + hint + '</div>' : '') + '</div>';
+    }
+    function kvTile(label, value) { return '<div class="stat-tile"><div><div class="stat-tile-label">' + label + '</div><div class="stat-tile-value">' + value + '</div></div></div>'; }
+    function openModal(id) {
+        var m = document.getElementById(id);
+        m.classList.add('open'); m.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        m.querySelector('.modal-close').focus();
+        m.querySelector('.modal-body').scrollTop = 0;
+    }
+    function closeModal(id, last) {
+        var m = document.getElementById(id);
+        m.classList.remove('open'); m.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        if (last && last.focus) last.focus();
+    }
+
+    // ---------- EDIT INTERFACE MODAL ----------
+    var lastFocused = null;
+    var MASKS = ['255.255.255.0', '255.255.0.0', '255.0.0.0', '255.255.255.128', '255.255.255.252'];
+
+    function openEdit(key) {
+        var i = INTERFACES[key];
+        document.getElementById('modal-title').textContent = i.name ? 'Edit ' + i.name : 'Add interface';
+        document.getElementById('modal-subtitle').textContent = i.name ? i.type + (i.device ? ' \u00b7 ' + i.device : '') : 'Configure a new logical network interface';
+
+        document.getElementById('if-view-general').innerHTML =
+            '<div class="panel-card"><div class="panel-title">Status</div><div class="stat-tile-grid">' +
+                kvTile('Type', i.type) + kvTile('Device', i.device || '-') + kvTile('Carrier', i.carrier) + kvTile('Uptime', i.uptime) +
+                kvTile('MAC', i.mac) + kvTile('IPv4', i.ipv4) + kvTile('RX', fmtBytes(i.rxBytes) + ' (' + i.rxPkts + ')') + kvTile('TX', fmtBytes(i.txBytes) + ' (' + i.txPkts + ')') +
+            '</div></div>' +
+            '<div class="panel-card"><div class="panel-title">Interface Configuration</div><div class="form-grid-2col">' +
+                (i.name ? '' : field('Name', input('', 'e.g. guest'), 'Name of the new interface.', true)) +
+                field('Protocol', select(['Static address', 'DHCP client', 'Unmanaged', 'PPPoE'], i.proto)) +
+                field('Device', select(['Ethernet Adapter: "' + (i.device || 'eth0') + '"', 'Bridge: "br-lan"', 'Ethernet Adapter: "eth7"'], i.device ? 'Ethernet Adapter: "' + i.device + '"' : '')) +
+                toggle('Disable this interface', false) + toggle('Bring up on boot', true) +
+            '</div></div>' +
+            '<div class="panel-card"><div class="panel-title">Addressing</div><div class="form-grid-2col">' +
+                field('IPv4 address', input(i.ip, '0.0.0.0')) +
+                field('IPv4 netmask', select(MASKS, i.netmask)) +
+                field('IPv4 gateway', input(i.gateway, 'optional')) +
+                field('IPv4 broadcast', input(i.broadcast, 'optional')) +
+                field('IPv6 address', '<div id="ipv6-rows">' + (i.ipv6 ? '<input type="text" value="' + i.ipv6 + '" style="width:100%; margin-bottom:8px;">' : '') + '</div><button class="btn" type="button" onclick="addIpv6Row()" style="align-self:flex-start;">Add IPv6 address…</button>') +
+                field('IPv6 gateway', input('', 'optional')) +
+                field('IPv6 routed prefix', input('', 'e.g. 2001:db8::/64'), 'Public prefix routed to this device for distribution to clients.', true) +
+            '</div></div>';
+
+        var tables = ['unspecified', 'main', 'local', 'default'];
+        document.getElementById('if-view-advanced').innerHTML =
+            '<div class="panel-card"><div class="panel-title">Link &amp; Routing</div><div class="form-grid-2col">' +
+                toggle('Force link', false, 'Set interface properties regardless of the link carrier (If set, carrier sense events do not invoke hotplug handlers).') +
+                toggle('Use default gateway', true, 'If unchecked, no default route is configured') +
+                toggle('Use custom DNS servers', false) +
+                field('DNS weight', num(0), 'The DNS server entries in the local resolv.conf are primarily sorted by the weight specified here') +
+                field('Use gateway metric', num(0), 'Metric is an ordinal, where a gateway with 1 is chosen 1st, 2 is chosen 2nd, 3 is chosen 3rd, etc') +
+                field('Multi-Path TCP', select(['Off', 'On', 'Master', 'Backup', 'Handover'], 'Off'), 'Multi-Path TCP RFC8684. For packets originating from this device, e.g. VPN.') +
+                field('Override IPv4 routing table', select(tables, 'unspecified')) +
+                field('Override IPv6 routing table', select(tables, 'unspecified')) +
+            '</div></div>' +
+            '<div class="panel-card"><div class="panel-title">IPv6 Delegation</div><div class="form-grid-2col">' +
+                toggle('Delegate IPv6 prefixes', false, 'Enable downstream delegation of IPv6 prefixes available on this interface') +
+                field('IPv6 assignment length', select(['disabled', '64', '60', '56', '48'], 'disabled'), 'Assign a part of given length of every public IPv6-prefix to this interface') +
+                field('IPv6 prefix filter', select(['-- Please choose --', 'ULA', 'GUA'], '-- Please choose --'), 'If set, downstream subnets are only allocated from the given IPv6 prefix classes.') +
+                field('IPv6 suffix', input('::1'), "Optional. Allowed values: 'eui64', 'random', fixed value like '::1' or '::1:2'. When IPv6 prefix (like 'a:b:c:d::') is received from a delegating server, use the suffix (like '::1') to form the IPv6 address ('a:b:c:d::1') for the interface.") +
+                field('IPv6 preference', num(0), 'When delegating prefixes to multiple downstreams, interfaces with a higher preference value are considered first when allocating subnets.') +
+            '</div></div>';
+
+        document.getElementById('if-view-firewall').innerHTML =
+            '<div class="panel-card"><div class="panel-title">Firewall Zone</div><div class="form-grid-2col">' +
+                field('Create / Assign firewall-zone', select(['unspecified', 'lan', 'wan'], key === 'lan' ? 'lan' : key === 'wan' ? 'wan' : 'unspecified'),
+                      'Choose the firewall zone you want to assign to this interface. Select unspecified to remove the interface from the associated zone or fill out the custom field to define a new zone and attach the interface to it.', true) +
+                field('Custom zone', input('', 'Define a new zone name'), null, true) +
+            '</div></div>';
+
+        document.getElementById('if-view-dhcp').innerHTML =
+            '<div class="empty-state"><div class="empty-state-title">No DHCP Server configured for this interface</div>' +
+                '<div class="empty-state-desc">Set up a DHCP server to hand out addresses to clients on this interface.</div>' +
+                '<button class="btn btn-primary" type="button" onclick="showDhcpForm()">Set up DHCP Server</button></div>' +
+            '<div class="panel-card" id="dhcp-form" style="display:none; margin-top:24px;"><div class="panel-title">DHCP Server</div><div class="form-grid-2col">' +
+                field('Start', num(100), 'Lowest leased address as offset from the network address.') +
+                field('Limit', num(150), 'Maximum number of leased addresses.') +
+                field('Lease time', input('12h'), 'Expiry time of leased addresses, minimum is 2 minutes (2m).') +
+                toggle('Ignore this interface', false, 'Disable DHCP for this interface.') +
+            '</div></div>';
+
+        switchIfTab('general');
+        lastFocused = document.activeElement;
+        openModal('edit-modal');
+    }
+    function closeEdit() { closeModal('edit-modal', lastFocused); }
+
+    function switchIfTab(tab) {
+        ['general', 'advanced', 'firewall', 'dhcp'].forEach(function (t) {
+            document.getElementById('if-tab-' + t).classList.toggle('active', t === tab);
+            document.getElementById('if-view-' + t).classList.toggle('active-view', t === tab);
+        });
+    }
+    function addIpv6Row() { document.getElementById('ipv6-rows').insertAdjacentHTML('beforeend', '<input type="text" placeholder="e.g. fd00::1/64" style="width:100%; margin-bottom:8px;">'); }
+    function showDhcpForm() { document.getElementById('dhcp-form').style.display = 'block'; }
+
+    // ---------- CONFIGURE DEVICE MODAL ----------
+    var DEV_TYPES = ['Network device', 'Bridge device', 'VLAN (802.1q)', 'VLAN (802.1ad)', 'MAC VLAN', 'Virtual Ethernet'];
+    var devCurrent = null, devVlans = [], devLastFocused = null;
+
+    function dToggle(label, checked, hint, cls, attrs) {
+        return '<div class="form-group' + (cls ? ' ' + cls : '') + '"><div class="switch-group"><label>' + label + '</label><label class="switch"><input type="checkbox"' + (checked ? ' checked' : '') + (attrs ? ' ' + attrs : '') + '><span class="slider"></span></label></div>' + (hint ? '<div class="field-hint">' + hint + '</div>' : '') + '</div>';
+    }
+    function dField(label, control, hint, full, cls) {
+        return '<div class="form-group' + (full ? ' full-width' : '') + (cls ? ' ' + cls : '') + '"><label>' + label + '</label>' + control + (hint ? '<div class="field-hint">' + hint + '</div>' : '') + '</div>';
+    }
+    function autoSel(state) { return select(['automatic (' + state + ')', 'disabled', 'enabled'], 'automatic (' + state + ')'); }
+
+    // Shared by the Configure and Add device modals
+    function deviceOptionFields(promisc) {
+        return promisc +
+            dField('Reverse path filter', select(['disabled', 'strict', 'loose'], 'disabled')) +
+            dField('Accept local', autoSel('disabled'), 'Accept packets with local source addresses') +
+            dField('Send ICMP redirects', autoSel('enabled')) +
+            dField('Honor gratuitous ARP', autoSel('disabled'), 'When enabled, new ARP table entries are added from received gratuitous ARP requests or replies, otherwise only preexisting table entries are updated, but no new hosts are learned.') +
+            dField('Drop gratuitous ARP', autoSel('disabled'), 'Drop all gratuitous ARP frames, for example if there\u2019s a known good ARP proxy on the network and such frames need not be used or in the case of 802.11, must not be used to prevent attacks.') +
+            dField('Neighbour cache validity', num(30000), 'Time in milliseconds') +
+            dField('Stale neighbour cache timeout', num(60), 'Timeout in seconds') +
+            dField('Minimum ARP validity time', num(0), 'Minimum required time in seconds before an ARP entry may be replaced. Prevents ARP cache thrashing.') +
+            dField('Enable IPv6 segment routing', autoSel('disabled')) +
+            dField('Drop unsolicited NA', autoSel('disabled'), 'Drop all unsolicited neighbor advertisements, for example if there\u2019s a known good NA proxy on the network and such frames need not be used or in the case of 802.11, must not be used to prevent attacks.');
+    }
+    function portsGrid(ports, checkedList, cls) {
+        return '<div class="dev-ports">' + ports.map(function (p) {
+            return '<label class="dev-port"><input type="checkbox"' + (cls ? ' class="' + cls + '" value="' + p + '"' : '') + (checkedList && checkedList.indexOf(p) >= 0 ? ' checked' : '') + '><span>' + p + '</span></label>';
+        }).join('') + '</div>';
+    }
+    var PORT_HINT = 'Specifies the wired ports to attach to this bridge. In order to attach wireless networks, choose the associated interface as network in the wireless settings.';
+
+    function openDevEdit(idx) {
+        var d = DEVICES[idx];
+        devCurrent = idx; devVlans = [];
+        var ports = DEVICES.filter(function (x) { return x.type === 'Network device'; }).map(function (x) { return x.name; });
+        document.getElementById('dev-modal-title').textContent = d.type + ': ' + d.name;
+        document.getElementById('dev-modal-subtitle').textContent = d.mac + ' \u00b7 MTU ' + d.mtu;
+
+        document.getElementById('dev-view-general').innerHTML =
+            '<div class="panel-card"><div class="panel-title">General device options</div><div class="form-grid-2col">' +
+                dField('Device type', '<select id="dev-type" onchange="devTypeChanged()">' + DEV_TYPES.map(function (t) { return '<option' + (t === d.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select>') +
+                dField('Device name', input(d.name)) +
+                dField('Bridge ports', portsGrid(ports, d.ports), PORT_HINT, true, 'dev-bridge-only') +
+                dToggle('Bring up empty bridge', false, 'Bring up the bridge interface even if no ports are attached', 'dev-bridge-only') +
+                dField('MTU', num(d.mtu)) + dField('MAC address', input('', d.mac)) + dField('TX queue length', input('', '')) +
+                dField('Enable IPv6', select(['automatic (enabled)', 'disabled', 'enabled'], 'automatic (enabled)')) +
+                dField('IPv6 MTU', input('', '')) + dField('DAD transmits', input('', ''), 'Amount of Duplicate Address Detection probes to send') +
+            '</div></div>';
+
+        document.getElementById('dev-view-advanced').innerHTML =
+            '<div class="panel-card dev-bridge-only"><div class="panel-title">Bridge options</div><div class="form-grid-2col">' +
+                dField('Priority', num(32767)) + dField('Ageing time', num(30), 'Timeout in seconds for learned MAC addresses in the forwarding database') +
+                dToggle('Enable STP', false, 'Enables the Spanning Tree Protocol on this bridge') +
+                dToggle('Enable IGMP snooping', false, 'Enables IGMP snooping on this bridge') + dToggle('Enable multicast querier', false) +
+            '</div></div>' +
+            '<div class="panel-card"><div class="panel-title">Device options</div><div class="form-grid-2col">' +
+                deviceOptionFields(dToggle('Enable promiscuous mode', false)) +
+                dField('Enable multicast support', autoSel('enabled')) +
+                dField('Force IGMP version', select(['No enforcement', '1', '2', '3'], 'No enforcement')) +
+                dField('Force MLD version', select(['No enforcement', '1', '2'], 'No enforcement')) +
+            '</div></div>';
+
+        document.getElementById('dev-view-vlan').innerHTML =
+            '<div class="panel-card"><div class="panel-title">Bridge VLAN filtering</div>' +
+                '<div class="form-grid-2col">' + dToggle('Enable VLAN filtering', false, null, '', 'onchange="devVlanToggle(this.checked)"') + '</div>' +
+                '<div id="dev-vlan-wrap" style="display:none; margin-top:16px;">' +
+                    '<div class="table-scroll"><table class="data-table"><thead><tr><th>VLAN ID</th><th>Local</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="dev-vlan-body"></tbody></table></div>' +
+                    '<div style="margin-top:12px;"><button class="btn" type="button" onclick="devVlanAdd()">Add VLAN</button></div>' +
+                '</div></div>';
+        devVlanRender();
+        devTypeChanged();
+        switchDevTab('general');
+        devLastFocused = document.activeElement;
+        openModal('dev-modal');
+    }
+
+    function devTypeChanged() {
+        var isBridge = document.getElementById('dev-type').value === 'Bridge device';
+        var els = document.querySelectorAll('#dev-modal .dev-bridge-only');
+        for (var n = 0; n < els.length; n++) els[n].style.display = isBridge ? '' : 'none';
+        document.getElementById('dev-tab-vlan').style.display = isBridge ? '' : 'none';
+        if (!isBridge && document.getElementById('dev-tab-vlan').classList.contains('active')) switchDevTab('general');
+    }
+    function switchDevTab(tab) {
+        ['general', 'advanced', 'vlan'].forEach(function (t) {
+            document.getElementById('dev-tab-' + t).classList.toggle('active', t === tab);
+            document.getElementById('dev-view-' + t).classList.toggle('active-view', t === tab);
+        });
+    }
+    function devVlanToggle(on) { document.getElementById('dev-vlan-wrap').style.display = on ? 'block' : 'none'; }
+    function devVlanRender() {
+        var body = document.getElementById('dev-vlan-body');
+        if (!body) return;
+        if (!devVlans.length) { body.innerHTML = '<tr class="dev-empty-row"><td colspan="3">This section contains no values yet</td></tr>'; return; }
+        body.innerHTML = devVlans.map(function (v, n) {
+            return '<tr><td><input class="dev-vlan-input" type="number" min="1" max="4094" value="' + esc(v.id) + '" placeholder="1-4094" oninput="devVlans[' + n + '].id = this.value"></td>' +
+                '<td><label class="switch"><input type="checkbox"' + (v.local ? ' checked' : '') + ' onchange="devVlans[' + n + '].local = this.checked"><span class="slider"></span></label></td>' +
+                '<td style="text-align:right;"><button class="btn btn-danger-outline" type="button" onclick="devVlanRemove(' + n + ')">Delete</button></td></tr>';
+        }).join('');
+    }
+    function devVlanAdd() { devVlans.push({ id: '', local: true }); devVlanRender(); }
+    function devVlanRemove(n) { devVlans.splice(n, 1); devVlanRender(); }
+    function closeDev() { closeModal('dev-modal', devLastFocused); }
+    // Mockup behaviour: saving marks the device as configured.
+    function saveDev() { if (devCurrent !== null) DEVICES[devCurrent].configured = true; renderDevices(); closeDev(); }
+
+    // ---------- ADD DEVICE CONFIGURATION MODAL ----------
+    var ADD_FIELDS = { 'Network device': ['network'], 'Bridge device': ['bridge', 'name'], 'VLAN (802.1q)': ['vlan', 'base'], 'VLAN (802.1ad)': ['vlan', 'base'], 'MAC VLAN': ['base'], 'Virtual Ethernet': ['name'] };
+    var addLastFocused = null;
+
+    function openAddDev() {
+        var names = DEVICES.map(function (d) { return d.name; });
+        var ports = DEVICES.filter(function (d) { return d.type === 'Network device'; }).map(function (d) { return d.name; });
+        function devSelect(id) { return '<select id="' + id + '">' + names.map(function (n) { return '<option>' + n + '</option>'; }).join('') + '</select>'; }
+
+        document.getElementById('add-view-general').innerHTML =
+            '<div class="panel-card"><div class="panel-title">General device options</div><div class="form-grid-2col">' +
+                dField('Device type', '<select id="add-type" onchange="addDevTypeChanged()">' + DEV_TYPES.map(function (t) { return '<option>' + t + '</option>'; }).join('') + '</select>',
+                    'For bonding, install <a href="software.html"><code>kmod-bonding</code></a><br>For VRF, install <a href="software.html"><code>kmod-vrf</code></a>', true) +
+                dField('Existing device', devSelect('add-existing'), null, true, 'add-f add-f-network') +
+                dField('Device name', input('', 'e.g. br-guest'), null, false, 'add-f add-f-name') +
+                dField('Base device', devSelect('add-base'), null, false, 'add-f add-f-base') +
+                dField('VLAN ID', '<input type="number" id="add-vlanid" min="1" max="4094" placeholder="1-4094">', null, false, 'add-f add-f-vlan') +
+                dField('Bridge ports', portsGrid(ports, null, 'add-port'), PORT_HINT, true, 'add-f add-f-bridge') +
+                dToggle('Bring up empty bridge', false, 'Bring up the bridge interface even if no ports are attached', 'add-f add-f-bridge') +
+                dField('MTU', '<input type="number" id="add-mtu" placeholder="1500">') + dField('MAC address', input('', '')) + dField('TX queue length', input('', '')) +
+                dField('Enable IPv6', select(['automatic (enabled)', 'disabled', 'enabled'], 'automatic (enabled)')) +
+                dField('IPv6 MTU', input('', '')) + dField('DAD transmits', input('', ''), 'Amount of Duplicate Address Detection probes to send') +
+            '</div></div>';
+
+        document.getElementById('add-view-advanced').innerHTML =
+            '<div class="panel-card"><div class="panel-title">Advanced device options</div><div class="form-grid-2col">' +
+                deviceOptionFields(dField('Enable promiscuous mode', select(['automatic', 'disabled', 'enabled'], 'automatic'))) +
+                dField('Enable multicast support', select(['automatic', 'disabled', 'enabled'], 'automatic')) +
+            '</div></div>';
+
+        addDevTypeChanged();
+        switchAddTab('general');
+        addLastFocused = document.activeElement;
+        openModal('add-dev-modal');
+    }
+    function addDevTypeChanged() {
+        var keys = ADD_FIELDS[document.getElementById('add-type').value] || [];
+        var els = document.querySelectorAll('#add-dev-modal .add-f');
+        for (var n = 0; n < els.length; n++) {
+            var show = keys.some(function (k) { return els[n].classList.contains('add-f-' + k); });
+            els[n].style.display = show ? '' : 'none';
+        }
+    }
+    function switchAddTab(tab) {
+        ['general', 'advanced'].forEach(function (t) {
+            document.getElementById('add-tab-' + t).classList.toggle('active', t === tab);
+            document.getElementById('add-view-' + t).classList.toggle('active-view', t === tab);
+        });
+    }
+    function closeAddDev() { closeModal('add-dev-modal', addLastFocused); }
+
+    // Mockup behaviour: an existing device becomes "configured"; other types add a new row.
+    function saveAddDev() {
+        var type = document.getElementById('add-type').value;
+        var mtu = parseInt(document.getElementById('add-mtu').value, 10) || 1500;
+        if (type === 'Network device') {
+            var name = document.getElementById('add-existing').value;
+            DEVICES.forEach(function (d) { if (d.name === name) { d.configured = true; d.mtu = mtu; } });
+        } else {
+            var typed = document.querySelector('#add-dev-modal .add-f-name input[type="text"]');
+            var base = document.getElementById('add-base').value;
+            var vid = document.getElementById('add-vlanid').value;
+            var newName = (typed && typed.value.trim()) ||
+                (type === 'Bridge device' ? 'br-new' : type === 'Virtual Ethernet' ? 'veth0' : type === 'MAC VLAN' ? base + '-mac0' : base + '.' + (vid || '1'));
+            var ports = [];
+            var cbs = document.querySelectorAll('#add-dev-modal .add-port');
+            for (var n = 0; n < cbs.length; n++) if (cbs[n].checked) ports.push(cbs[n].value);
+            DEVICES.push(DV(newName, type, '-', { mtu: mtu, connected: false, ports: ports }));
+        }
+        renderDevices();
+        closeAddDev();
+    }
+
+    // ---------- Global options ----------
+    function addRpsRow() {
+        document.getElementById('rps-list').insertAdjacentHTML('beforeend', '<div class="dyn-row"><input type="text" placeholder="Standard: none"><button class="btn" type="button" onclick="removeRpsRow(this)" aria-label="Remove">&times;</button></div>');
+    }
+    function removeRpsRow(btn) {
+        var row = btn.parentNode, list = row.parentNode;
+        if (list.children.length > 1) list.removeChild(row); else row.querySelector('input').value = '';
+    }
+
+    // Close on backdrop click and Escape (topmost modal first).
+    [['edit-modal', closeEdit], ['dev-modal', closeDev], ['add-dev-modal', closeAddDev]].forEach(function (p) {
+        document.getElementById(p[0]).addEventListener('mousedown', function (e) { if (e.target === this) p[1](); });
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        if (document.getElementById('add-dev-modal').classList.contains('open')) closeAddDev();
+        else if (document.getElementById('dev-modal').classList.contains('open')) closeDev();
+        else if (document.getElementById('edit-modal').classList.contains('open')) closeEdit();
+    });
+
+    renderCards();
+    renderDevices();
+</script>
+<script src="../shared/theme-clock.js"></script>
+</body>
+</html>

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGFW - System Logs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../shared/tokens.css">
+    <link rel="stylesheet" href="../shared/components.css">
+    <style>
+        /* Shared look with the Firewall / Interfaces pages */
+        :root {
+            --if-navy: #14213d; --if-navy-2: #1f3560;
+            --if-navy-grad: linear-gradient(135deg, var(--if-navy) 0%, var(--if-navy-2) 100%);
+            --if-shadow-sm: 0 1px 1px rgba(15, 23, 42, 0.06), 0 3px 6px rgba(15, 23, 42, 0.08), 0 8px 16px -4px rgba(15, 23, 42, 0.10);
+            --if-shadow-md: 0 2px 3px rgba(15, 23, 42, 0.08), 0 8px 16px rgba(15, 23, 42, 0.12), 0 22px 36px -8px rgba(15, 23, 42, 0.18);
+        }
+        ::selection { background: color-mix(in srgb, var(--if-navy-2) 25%, transparent); }
+        body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+        .mono, .data-table td { font-variant-numeric: tabular-nums; }
+        .mono { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12.5px; }
+
+        .panel-card { background: linear-gradient(180deg, var(--bg-card), color-mix(in srgb, var(--bg-card) 94%, var(--surface-alt))); box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+        .table-scroll { border-radius: 14px; box-shadow: var(--if-shadow-md); }
+        .panel-card .table-scroll { box-shadow: none; border: 1px solid var(--border-color); border-radius: 12px; }
+
+        /* Tabs: segmented control */
+        .tabs { display: inline-flex; gap: 4px; padding: 4px; max-width: 100%; overflow-x: auto; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06); }
+        .tabs .tab { border: none; border-bottom: none; background: transparent; border-radius: 9px; padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; cursor: pointer; box-shadow: none; transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease; }
+        .tabs .tab::after { display: none; }
+        .tabs .tab:hover { color: var(--text-main); }
+        .tabs .tab.active { background: var(--bg-card); color: var(--text-main); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 4px 10px -3px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7); }
+
+        /* Forms */
+        .form-grid-2col { gap: 18px 24px; }
+        .form-group > label { display: block; font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; }
+        .field-hint { font-size: 12px; line-height: 1.55; color: var(--text-muted); margin-top: 6px; }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group input[type="password"], .form-group select, .form-group textarea {
+            min-height: 38px; border-radius: 10px; font-size: 13.5px; background: var(--bg-card); border: 1px solid var(--border-color);
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.07); transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .form-group textarea { width: 100%; box-sizing: border-box; padding: 9px 12px; font-family: inherit; color: var(--text-main); resize: vertical; }
+        .form-group textarea.key-input { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12.5px; border-style: dashed; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--if-navy-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--if-navy-2) 22%, transparent), inset 0 1px 2px rgba(15, 23, 42, 0.07); }
+        .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-muted); opacity: 0.65; }
+        .panel-title { font-size: 14px; font-weight: 700; letter-spacing: -0.1px; padding-bottom: 12px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); }
+        .switch input:checked + .slider { background: var(--if-navy-2); }
+        .inline-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .inline-row .time-display { min-width: 210px; }
+        .unit { font-size: 13px; color: var(--text-muted); }
+        .dyn-list { display: flex; flex-direction: column; gap: 8px; }
+        .dyn-row { display: flex; gap: 8px; }
+        .dyn-row input { flex: 1 1 auto; }
+        .dyn-row .btn { flex: 0 0 auto; padding: 6px 12px; }
+
+        /* Buttons */
+        .btn { font-weight: 600; border-radius: 10px; transition: box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease, border-color 0.15s ease; }
+        .btn:active { transform: translateY(1px); }
+        .btn:focus-visible, .tabs .tab:focus-visible { outline: 2px solid var(--if-navy-2); outline-offset: 2px; }
+        .switch input:focus-visible + .slider { outline: 2px solid var(--if-navy-2); outline-offset: 2px; }
+        .view-footer-actions .btn-primary, .panel-title > .btn-primary {
+            background: var(--if-navy-grad); border-color: var(--if-navy); color: #fff;
+            box-shadow: 0 8px 16px -4px rgba(20, 33, 61, 0.55), 0 2px 3px rgba(20, 33, 61, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .panel-title > .btn-primary { margin-left: 14px; padding: 6px 18px; font-size: 12.5px; }
+
+        /* Tables */
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .data-table thead th { background: var(--surface-alt); color: var(--text-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.2px; text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+        .data-table tbody td { padding: 13px 16px; font-size: 13px; vertical-align: middle; border-bottom: 1px solid var(--border-color); overflow-wrap: anywhere; }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+        .data-table tbody tr { transition: background 0.12s ease; }
+        .data-table tbody tr:hover { background: var(--surface-alt); }
+
+        /* Intro cards, titled sections */
+        .fw-title { font-size: 15px; font-weight: 700; letter-spacing: -0.1px; color: var(--text-main); margin-bottom: 8px; }
+        .fw-count { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-left: auto; }
+        .dh-intro { margin-bottom: 20px; padding: 18px 22px; }
+        .dh-intro p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.65; color: var(--text-muted); }
+        .dh-intro p:last-child { margin-bottom: 0; }
+        .dh-intro code, .panel-card p code { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12px; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 5px; padding: 1px 5px; }
+        .panel-title.dh-ico { display: flex; align-items: center; gap: 10px; }
+        .panel-title.dh-ico::before {
+            content: ''; flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px;
+            background: var(--if-navy) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 6h16M4 12h16M4 18h10'/%3E%3C/svg%3E") center / 15px no-repeat;
+        }
+
+        .filter-group > label { font-size: 13px; font-weight: 600; color: var(--text-main); }
+        .filter-control select, .filter-control input[type="text"], .filter-control input[type="number"] {
+            min-height: 38px; border-radius: 10px; font-size: 13.5px; background: var(--bg-card); border: 1px solid var(--border-color);
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.07); transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .filter-control select:focus, .filter-control input:focus { outline: none; border-color: var(--if-navy-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--if-navy-2) 22%, transparent), inset 0 1px 2px rgba(15, 23, 42, 0.07); }
+        .not-toggle input { accent-color: var(--if-navy-2); }
+        .panel-card .log-viewer { border-radius: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="brand">NGFW</div>
+    <a class="menu-item" href="status.html">Dashboard</a>
+    <div class="menu-item" onclick="toggleMenu('status-menu');"><span>Status</span><span class="caret" id="status-menu-caret">▸</span></div>
+    <div class="sub-menu open" id="status-menu">
+        <a class="menu-item" href="status.html">Overview</a>
+        <a class="menu-item" href="routing.html">Routing</a>
+        <a class="menu-item" href="firewall.html">Firewall</a>
+        <a class="menu-item active" href="logs.html">System Logs</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('system-menu');"><span>System</span><span class="caret" id="system-menu-caret">▸</span></div>
+    <div class="sub-menu" id="system-menu">
+        <a class="menu-item" href="system.html">System</a>
+        <a class="menu-item" href="administration.html">Administration</a>
+        <a class="menu-item" href="software.html">Software</a>
+        <a class="menu-item" href="startup.html">Startup</a>
+        <a class="menu-item" href="scheduled.html">Scheduled Tasks</a>
+        <a class="menu-item" href="backup.html">Backup / Flash Firmware</a>
+        <a class="menu-item" href="reboot.html">Reboot</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('network-menu');"><span>Network</span><span class="caret" id="network-menu-caret">▸</span></div>
+    <div class="sub-menu" id="network-menu">
+        <a class="menu-item" href="interfaces.html">Interfaces</a>
+        <a class="menu-item" href="network-routing.html">Routing</a>
+        <a class="menu-item" href="dhcp.html">DHCP</a>
+        <a class="menu-item" href="dns.html">DNS</a>
+        <a class="menu-item" href="diagnostics.html">Diagnostics</a>
+        <a class="menu-item" href="network-firewall.html">Firewall</a>
+    </div>
+    <a href="#" class="menu-item" style="margin-top: auto;">Log out</a>
+</div>
+
+<div class="main-content">
+    <div class="top-header">
+        <div class="header-left"><div class="page-title">System Logs</div></div>
+        <div class="header-right">
+            <div class="time-display" id="liveTime">--:--:--</div>
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color theme">
+                <span id="themeIcon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span id="themeLabel">Dark</span>
+            </button>
+            <div class="status-badge">&#9679; Refreshing</div>
+        </div>
+    </div>
+
+    <div class="page-container">
+        <div class="tabs" style="margin-bottom:20px;">
+            <button class="tab active" id="log-tab-system" onclick="switchLogTab('system')">System Log</button>
+            <button class="tab" id="log-tab-kernel" onclick="switchLogTab('kernel')">Kernel Log</button>
+        </div>
+
+        <!-- <div class="panel-card dh-intro"><div class="fw-title">Status - System Logs</div><p>View the system log (logread) or the kernel log (dmesg), and narrow it down by facility, severity or text.</p></div> -->
+
+        <!-- FILTERS: logread (System Log) / dmesg (Kernel Log) -->
+        <div class="panel-card">
+            <div class="panel-title dh-ico">Filter options</div>
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>Facility</label>
+                    <div class="filter-control">
+                        <label class="not-toggle"><input type="checkbox" id="f-fac-not"> Not</label>
+                        <select id="f-fac">
+                            <option value="">Any</option><option value="kern">Kernel</option><option value="user">User</option><option value="mail">Mail</option>
+                            <option value="daemon">Daemon</option><option value="auth">Auth</option><option value="syslog">Syslog</option><option value="lpr">LPR</option>
+                            <option value="news">News</option><option value="uucp">UUCP</option><option value="cron">Cron</option><option value="authpriv">Auth Priv</option>
+                            <option value="ftp">FTP</option><option value="ntp">NTP</option><option value="audit">Log audit</option><option value="console">Log alert</option>
+                            <option value="clock">Scheduling daemon</option><option value="local0">Local 0</option><option value="local1">Local 1</option><option value="local2">Local 2</option>
+                            <option value="local3">Local 3</option><option value="local4">Local 4</option><option value="local5">Local 5</option><option value="local6">Local 6</option>
+                            <option value="local7">Local 7</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Severity</label>
+                    <div class="filter-control">
+                        <label class="not-toggle"><input type="checkbox" id="f-sev-not"> Not</label>
+                        <select id="f-sev">
+                            <option value="">Any</option><option value="emerg">Emergency</option><option value="alert">Alert</option><option value="crit">Critical</option>
+                            <option value="err">Error</option><option value="warn">Warning</option><option value="notice">Notice</option><option value="info">Info</option><option value="debug">Debug</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Including</label>
+                    <div class="filter-control">
+                        <label class="not-toggle"><input type="checkbox" id="f-text-not"> Not</label>
+                        <input type="text" id="f-text" placeholder="Search text…">
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Max rows</label>
+                    <div class="filter-control"><input type="number" id="f-max" value="100" min="1" max="5000"></div>
+                </div>
+            </div>
+            <div class="view-footer-actions">
+                <button class="btn btn-primary" onclick="renderLog()">Apply</button>
+                <button class="btn" onclick="resetFilters()">Reset</button>
+            </div>
+        </div>
+
+        <div class="panel-card">
+            <div class="panel-title dh-ico"><span id="log-title">System log</span></div>
+            <div class="log-toolbar">
+                <span id="log-count">—</span>
+                <span id="log-source">Source: logread</span>
+            </div>
+            <div class="log-viewer" id="log-viewer"></div>
+        </div>
+
+        <div class="page-footer">
+            Powered by LuCI (HEAD detached at 650a6ca3) branch (26.124.63982~650a6ca) &nbsp;|&nbsp; ArgonTheme v2.4.5 &nbsp;|&nbsp; OpenWrt 25.12.3-r32912-6639b15f62
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleMenu(menuId) {
+        var subMenu = document.getElementById(menuId);
+        var caret = document.getElementById(menuId.replace('-menu', '-menu-caret'));
+        if (!subMenu || !caret) return;
+        var isOpen = subMenu.classList.toggle('open');
+        caret.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+
+    // Raw log text, one entry per line in the format LuCI shows:
+    //   [timestamp] facility.severity: message
+    // Replace these strings with real `logread` / `dmesg` output later.
+    var SYSTEM_RAW = [
+        '[Sep 28, 2026, 4:44:58 AM UTC] daemon.info procd: - early -',
+        '[Sep 28, 2026, 4:44:59 AM UTC] daemon.info procd: - ubus -',
+        '[Sep 28, 2026, 4:45:00 AM UTC] daemon.info procd: - init -',
+        '[Sep 28, 2026, 4:45:02 AM UTC] daemon.notice netifd: Interface \'lan\' is enabled',
+        '[Sep 28, 2026, 4:45:02 AM UTC] daemon.notice netifd: Interface \'wan\' is enabled',
+        '[Sep 28, 2026, 4:45:04 AM UTC] daemon.notice netifd: Interface \'wan\' is setting up now',
+        '[Sep 28, 2026, 4:45:04 AM UTC] daemon.notice netifd: Interface \'wan\' is now up',
+        '[Sep 28, 2026, 4:45:05 AM UTC] daemon.info dnsmasq[1842]: started, version 2.90 cachesize 150',
+        '[Sep 28, 2026, 4:45:05 AM UTC] daemon.warn dnsmasq[1842]: no servers found in /tmp/resolv.conf.d/resolv.conf.auto, will retry',
+        '[Sep 28, 2026, 4:45:06 AM UTC] user.notice firewall: Reloading firewall due to ifup of wan (eth7)',
+        '[Sep 28, 2026, 4:45:08 AM UTC] cron.info crond[1921]: crond (busybox 1.37.0) started, log level 5',
+        '[Sep 28, 2026, 4:45:09 AM UTC] auth.info dropbear[2010]: Not backgrounding',
+        '[Sep 28, 2026, 4:45:11 AM UTC] daemon.err uhttpd[2044]: luci: failed to load ubus session object',
+        '[Sep 28, 2026, 4:45:12 AM UTC] daemon.info procd: - init complete -',
+        '[Sep 28, 2026, 5:02:31 AM UTC] auth.warn dropbear[2871]: Bad password attempt for \'root\' from 31.1.1.3:52114',
+        '[Sep 28, 2026, 5:02:36 AM UTC] auth.info dropbear[2871]: Exit before auth from <31.1.1.3:52114>: (user \'root\', 1 fails)',
+        '[Sep 28, 2026, 5:14:09 AM UTC] daemon.notice netifd: Network device \'eth4\' link is down',
+        '[Sep 28, 2026, 5:14:09 AM UTC] daemon.notice netifd: Network device \'eth5\' link is down',
+        '[Sep 28, 2026, 5:30:00 AM UTC] cron.info crond[1921]: USER root pid 3120 cmd /usr/bin/ntpd-check'
+    ];
+
+    var KERNEL_RAW = [
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000000] Command line: BOOT_IMAGE=/boot/vmlinuz root=PARTUUID=4261b1e0-02 rootwait console=tty1 console=ttyS0,115200n8 noinitrd',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000000] BIOS-provided physical RAM map:',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000000] BIOS-e820: [mem 0x0000000000000000-0x00000000000997ff] usable',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000000] BIOS-e820: [mem 0x0000000000099800-0x000000000009ffff] reserved',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000000] BIOS-e820: [mem 0x0000000000100000-0x000000003e2dffff] usable',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000000] BIOS-e820: [mem 0x0000000100000000-0x000000027fffffff] usable',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000000] NX (Execute Disable) protection: active',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000000] APIC: Static calls initialized',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000000] SMBIOS 3.0.0 present.',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000000] DMI: Lanner Electronics Inc. NCA-1515/Default string, BIOS FNCB1515F00006W115 10/01/2024',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000000] DMI: Memory slots populated: 1/2',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000000] tsc: Detected 2200.000 MHz processor',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.debug: [    0.000015] e820: update [mem 0x00000000-0x00000fff] usable ==> reserved',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.debug: [    0.000019] e820: remove [mem 0x000a0000-0x000fffff] usable',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000030] last_pfn = 0x280000 max_arch_pfn = 0x400000000',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000036] MTRR map: 6 entries (3 fixed + 3 variable; max 23), built from 10 variable MTRRs',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000039] x86/PAT: Configuration [0-7]: WB  WC  UC- UC  WB  WP  UC- WT',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.000126] x2apic: enabled by BIOS, switching to x2apic ops',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.004153] found SMP MP-table at [mem 0x000fcdf0-0x000fcdff]',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.004168] Using GB pages for direct mapping',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.005680] ACPI: Early table checksum verification disabled',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.005685] ACPI: RSDP 0x00000000000F05B0 000024 (v02 ALASKA)',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.005690] ACPI: XSDT 0x000000007DF79088 000094 (v01 ALASKA A M I    01072009 AMI  00010013)',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.005697] ACPI: FACP 0x000000007DF7DAB8 000114 (v06 ALASKA A M I    01072009 AMI  00010013)',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.005704] ACPI: DSDT 0x000000007DF791B0 004901 (v02 ALASKA A M I    01072009 INTL 20061109)',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.005844] APIC: Switched APIC routing to: cluster x2apic',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.005864] Zone ranges:',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.005866]   DMA      [mem 0x0000000000001000-0x0000000000ffffff]',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.005868]   DMA32    [mem 0x0000000001000000-0x00000000ffffffff]',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.005870]   Normal   [mem 0x0000000100000000-0x000000027fffffff]',
+        '[Sep 28, 2026, 4:44:44 AM UTC] kern.info: [    0.005873] Early memory node ranges'
+    ];
+
+    var LINE_RE = /^\[([^\]]+)\]\s+([a-z0-9]+)\.([a-z]+):?\s*(.*)$/;
+
+    function parseLog(rawLines) {
+        return rawLines.map(function (line) {
+            var m = LINE_RE.exec(line);
+            return m ? { ts: m[1], fac: m[2], sev: m[3], msg: m[4] }
+                     : { ts: '', fac: 'user', sev: 'info', msg: line };
+        });
+    }
+
+    var LOGS = { system: parseLog(SYSTEM_RAW), kernel: parseLog(KERNEL_RAW) };
+    var currentLog = 'system';
+
+    function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    function switchLogTab(tab) {
+        currentLog = tab;
+        document.getElementById('log-tab-system').classList.toggle('active', tab === 'system');
+        document.getElementById('log-tab-kernel').classList.toggle('active', tab === 'kernel');
+        document.getElementById('log-title').textContent = tab === 'system' ? 'System log' : 'Kernel log';
+        document.getElementById('log-source').textContent = 'Source: ' + (tab === 'system' ? 'logread' : 'dmesg');
+        renderLog();
+    }
+
+    function renderLog() {
+        var fac = document.getElementById('f-fac').value;
+        var facNot = document.getElementById('f-fac-not').checked;
+        var sev = document.getElementById('f-sev').value;
+        var sevNot = document.getElementById('f-sev-not').checked;
+        var text = document.getElementById('f-text').value.trim().toLowerCase();
+        var textNot = document.getElementById('f-text-not').checked;
+        var max = parseInt(document.getElementById('f-max').value, 10) || 100;
+
+        var all = LOGS[currentLog];
+        var filtered = all.filter(function (e) {
+            if (fac && ((e.fac === fac) === facNot)) return false;
+            if (sev && ((e.sev === sev) === sevNot)) return false;
+            if (text && ((e.msg.toLowerCase().indexOf(text) !== -1) === textNot)) return false;
+            return true;
+        });
+
+        var shown = filtered.slice(-max);
+        var viewer = document.getElementById('log-viewer');
+
+        if (!shown.length) {
+            viewer.innerHTML = '<div class="log-empty">No log entries match the current filters.</div>';
+        } else {
+            viewer.innerHTML = shown.map(function (e) {
+                return '<div class="log-line sev-' + e.sev + '">' +
+                    '<span class="log-ts">' + esc(e.ts) + '</span>' +
+                    '<span><span class="sev-badge">' + esc(e.fac + '.' + e.sev) + '</span></span>' +
+                    '<span class="log-msg">' + esc(e.msg) + '</span>' +
+                '</div>';
+            }).join('');
+            viewer.scrollTop = viewer.scrollHeight;
+        }
+
+        document.getElementById('log-count').textContent = 'Showing ' + shown.length + ' of ' + all.length + ' entries';
+    }
+
+    function resetFilters() {
+        document.getElementById('f-fac').value = '';
+        document.getElementById('f-sev').value = '';
+        document.getElementById('f-text').value = '';
+        document.getElementById('f-fac-not').checked = false;
+        document.getElementById('f-sev-not').checked = false;
+        document.getElementById('f-text-not').checked = false;
+        document.getElementById('f-max').value = 100;
+        renderLog();
+    }
+
+    ['f-fac', 'f-sev', 'f-fac-not', 'f-sev-not', 'f-text-not', 'f-max'].forEach(function (id) {
+        document.getElementById(id).addEventListener('change', renderLog);
+    });
+    document.getElementById('f-text').addEventListener('input', renderLog);
+
+    renderLog();
+</script>
+<script src="../shared/theme-clock.js"></script>
+</body>
+</html>

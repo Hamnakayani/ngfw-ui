@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGFW - Scheduled Tasks</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../shared/tokens.css">
+    <link rel="stylesheet" href="../shared/components.css">
+    <style>
+        /* Shared look with the Firewall / Interfaces pages */
+        :root {
+            --if-navy: #14213d; --if-navy-2: #1f3560;
+            --if-navy-grad: linear-gradient(135deg, var(--if-navy) 0%, var(--if-navy-2) 100%);
+            --if-shadow-sm: 0 1px 1px rgba(15, 23, 42, 0.06), 0 3px 6px rgba(15, 23, 42, 0.08), 0 8px 16px -4px rgba(15, 23, 42, 0.10);
+            --if-shadow-md: 0 2px 3px rgba(15, 23, 42, 0.08), 0 8px 16px rgba(15, 23, 42, 0.12), 0 22px 36px -8px rgba(15, 23, 42, 0.18);
+        }
+        ::selection { background: color-mix(in srgb, var(--if-navy-2) 25%, transparent); }
+        body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+        .mono, .data-table td { font-variant-numeric: tabular-nums; }
+        .mono { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12.5px; }
+
+        .panel-card { background: linear-gradient(180deg, var(--bg-card), color-mix(in srgb, var(--bg-card) 94%, var(--surface-alt))); box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+        .table-scroll { border-radius: 14px; box-shadow: var(--if-shadow-md); }
+        .panel-card .table-scroll { box-shadow: none; border: 1px solid var(--border-color); border-radius: 12px; }
+
+        /* Tabs: segmented control */
+        .tabs { display: inline-flex; gap: 4px; padding: 4px; max-width: 100%; overflow-x: auto; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06); }
+        .tabs .tab { border: none; border-bottom: none; background: transparent; border-radius: 9px; padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; cursor: pointer; box-shadow: none; transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease; }
+        .tabs .tab::after { display: none; }
+        .tabs .tab:hover { color: var(--text-main); }
+        .tabs .tab.active { background: var(--bg-card); color: var(--text-main); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 4px 10px -3px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7); }
+
+        /* Forms */
+        .form-grid-2col { gap: 18px 24px; }
+        .form-group > label { display: block; font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; }
+        .field-hint { font-size: 12px; line-height: 1.55; color: var(--text-muted); margin-top: 6px; }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group input[type="password"], .form-group select, .form-group textarea {
+            min-height: 38px; border-radius: 10px; font-size: 13.5px; background: var(--bg-card); border: 1px solid var(--border-color);
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.07); transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .form-group textarea { width: 100%; box-sizing: border-box; padding: 9px 12px; font-family: inherit; color: var(--text-main); resize: vertical; }
+        .form-group textarea.key-input { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12.5px; border-style: dashed; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--if-navy-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--if-navy-2) 22%, transparent), inset 0 1px 2px rgba(15, 23, 42, 0.07); }
+        .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-muted); opacity: 0.65; }
+        .panel-title { font-size: 14px; font-weight: 700; letter-spacing: -0.1px; padding-bottom: 12px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); }
+        .switch input:checked + .slider { background: var(--if-navy-2); }
+        .inline-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .inline-row .time-display { min-width: 210px; }
+        .unit { font-size: 13px; color: var(--text-muted); }
+        .dyn-list { display: flex; flex-direction: column; gap: 8px; }
+        .dyn-row { display: flex; gap: 8px; }
+        .dyn-row input { flex: 1 1 auto; }
+        .dyn-row .btn { flex: 0 0 auto; padding: 6px 12px; }
+
+        /* Buttons */
+        .btn { font-weight: 600; border-radius: 10px; transition: box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease, border-color 0.15s ease; }
+        .btn:active { transform: translateY(1px); }
+        .btn:focus-visible, .tabs .tab:focus-visible { outline: 2px solid var(--if-navy-2); outline-offset: 2px; }
+        .switch input:focus-visible + .slider { outline: 2px solid var(--if-navy-2); outline-offset: 2px; }
+        .view-footer-actions .btn-primary, .panel-title > .btn-primary {
+            background: var(--if-navy-grad); border-color: var(--if-navy); color: #fff;
+            box-shadow: 0 8px 16px -4px rgba(20, 33, 61, 0.55), 0 2px 3px rgba(20, 33, 61, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .panel-title > .btn-primary { margin-left: 14px; padding: 6px 18px; font-size: 12.5px; }
+
+        /* Tables */
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .data-table thead th { background: var(--surface-alt); color: var(--text-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.2px; text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+        .data-table tbody td { padding: 13px 16px; font-size: 13px; vertical-align: middle; border-bottom: 1px solid var(--border-color); overflow-wrap: anywhere; }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+        .data-table tbody tr { transition: background 0.12s ease; }
+        .data-table tbody tr:hover { background: var(--surface-alt); }
+
+        /* Intro cards, titled sections */
+        .fw-title { font-size: 15px; font-weight: 700; letter-spacing: -0.1px; color: var(--text-main); margin-bottom: 8px; }
+        .fw-count { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-left: auto; }
+        .dh-intro { margin-bottom: 20px; padding: 18px 22px; }
+        .dh-intro p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.65; color: var(--text-muted); }
+        .dh-intro p:last-child { margin-bottom: 0; }
+        .dh-intro code, .panel-card p code { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12px; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 5px; padding: 1px 5px; }
+        .panel-title.dh-ico { display: flex; align-items: center; gap: 10px; }
+        .panel-title.dh-ico::before {
+            content: ''; flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px;
+            background: var(--if-navy) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 6h16M4 12h16M4 18h10'/%3E%3C/svg%3E") center / 15px no-repeat;
+        }
+
+        /* ---------- Software / Startup shared bits ---------- */
+        .warn-banner { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 20px; border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--text-main); background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.45); box-shadow: var(--if-shadow-sm); }
+        .warn-banner svg { color: var(--warning); flex-shrink: 0; }
+        .tab-count { display: inline-block; min-width: 20px; margin-left: 8px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 1.6; text-align: center; color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 14%, transparent); }
+        .tabs .tab.active .tab-count { color: #fff; background: var(--if-navy-2); }
+        .row-actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; row-gap: 6px; }
+        .data-table .btn { padding: 5px 12px; font-size: 12px; }
+        .data-table .empty td { text-align: center; color: var(--text-muted); font-style: italic; padding: 34px 16px; }
+        .form-group textarea.code-area { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12.5px; line-height: 1.55; }
+        .toast { position: fixed; bottom: 24px; left: 290px; background: #0f172a; color: #fff; padding: 11px 18px; border-radius: 10px; font-size: 13px; font-weight: 500; opacity: 0; transform: translateY(8px); transition: all 0.2s ease; pointer-events: none; z-index: 1200; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.35); }
+        .toast.show { opacity: 1; transform: none; }
+
+        .cron-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; margin-bottom: 20px; }
+        .cron-layout .panel-card { margin-bottom: 0; }
+        @media (max-width: 1100px) { .cron-layout { grid-template-columns: 1fr; } }
+        .form-group textarea.cron-editor { min-height: 320px; font-size: 13px; line-height: 1.6; }
+        .syntax-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 12.5px; }
+        .syntax-row .k { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-weight: 700; color: var(--text-main); }
+        .syntax-row .v { color: var(--text-muted); }
+        .cron-example { margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: var(--surface-alt); border: 1px solid var(--border-color); box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.07); font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12px; color: var(--text-main); line-height: 1.7; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="brand">NGFW</div>
+    <a class="menu-item" href="status.html">Dashboard</a>
+    <div class="menu-item" onclick="toggleMenu('status-menu');"><span>Status</span><span class="caret" id="status-menu-caret">▸</span></div>
+    <div class="sub-menu" id="status-menu">
+        <a class="menu-item" href="status.html">Overview</a>
+        <a class="menu-item" href="routing.html">Routing</a>
+        <a class="menu-item" href="firewall.html">Firewall</a>
+        <a class="menu-item" href="logs.html">System Logs</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('system-menu');"><span>System</span><span class="caret" id="system-menu-caret">▸</span></div>
+    <div class="sub-menu open" id="system-menu">
+        <a class="menu-item" href="system.html">System</a>
+        <a class="menu-item" href="administration.html">Administration</a>
+        <a class="menu-item" href="software.html">Software</a>
+        <a class="menu-item" href="startup.html">Startup</a>
+        <a class="menu-item active" href="scheduled.html">Scheduled Tasks</a>
+        <a class="menu-item" href="backup.html">Backup / Flash Firmware</a>
+        <a class="menu-item" href="reboot.html">Reboot</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('network-menu');"><span>Network</span><span class="caret" id="network-menu-caret">▸</span></div>
+    <div class="sub-menu" id="network-menu">
+        <a class="menu-item" href="interfaces.html">Interfaces</a>
+        <a class="menu-item" href="network-routing.html">Routing</a>
+        <a class="menu-item" href="dhcp.html">DHCP</a>
+        <a class="menu-item" href="dns.html">DNS</a>
+        <a class="menu-item" href="diagnostics.html">Diagnostics</a>
+        <a class="menu-item" href="network-firewall.html">Firewall</a>
+    </div>
+    <a href="#" class="menu-item" style="margin-top: auto;">Log out</a>
+</div>
+
+<div class="main-content">
+    <div class="top-header">
+        <div class="header-left"><div class="page-title">Scheduled Tasks</div></div>
+        <div class="header-right">
+            <div class="time-display" id="liveTime">--:--:--</div>
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color theme">
+                <span id="themeIcon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span id="themeLabel">Dark</span>
+            </button>
+            <div class="status-badge">&#9679; Refreshing</div>
+        </div>
+    </div>
+
+    <div class="page-container">
+        <!-- <div class="panel-card dh-intro"><div class="fw-title">Scheduled Tasks - System crontab</div><p>This is the system crontab in which scheduled tasks can be defined.</p></div> -->
+        <div class="cron-layout">
+            <!-- /etc/crontabs/root -->
+            <div class="panel-card">
+                <div class="panel-title dh-ico">System crontab</div>
+                <div class="form-group">
+                    <textarea class="code-area cron-editor" id="cron-text" spellcheck="false"># m h dom mon dow command
+0 3 * * * /usr/bin/ntpd-check
+30 4 * * 0 /sbin/logrotate /etc/logrotate.conf
+*/15 * * * * /usr/bin/wan-watchdog
+0 0 1 * * /usr/bin/backup-config</textarea>
+                </div>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-title dh-ico">Cron syntax</div>
+                <div class="syntax-row">
+                    <span class="k">minute</span><span class="v">0 - 59</span>
+                    <span class="k">hour</span><span class="v">0 - 23</span>
+                    <span class="k">day of month</span><span class="v">1 - 31</span>
+                    <span class="k">month</span><span class="v">1 - 12</span>
+                    <span class="k">day of week</span><span class="v">0 - 6 (Sun = 0)</span>
+                </div>
+                <div class="cron-example">*&nbsp;&nbsp;every value<br>*/15&nbsp;&nbsp;every 15 units<br>1,15&nbsp;&nbsp;list of values<br>1-5&nbsp;&nbsp;range of values</div>
+            </div>
+        </div>
+
+        <div class="view-footer-actions">
+            <button class="btn" onclick="resetCron()">Reset</button>
+            <button class="btn btn-primary" onclick="toast('Crontab saved and cron restarted')">Save</button>
+        </div>
+
+        <div class="page-footer">
+            Powered by LuCI (HEAD detached at 650a6ca3) branch (26.124.63982~650a6ca) &nbsp;|&nbsp; ArgonTheme v2.4.5 &nbsp;|&nbsp; OpenWrt 25.12.3-r32912-6639b15f62
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    function toggleMenu(menuId) {
+        var subMenu = document.getElementById(menuId);
+        var caret = document.getElementById(menuId.replace('-menu', '-menu-caret'));
+        if (!subMenu || !caret) return;
+        var isOpen = subMenu.classList.toggle('open');
+        caret.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+
+    var ta = document.getElementById('cron-text');
+    var DEFAULT_CRON = ta.value;
+
+    var toastTimer;
+    function toast(msg) {
+        var t = document.getElementById('toast');
+        t.textContent = msg; t.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2200);
+    }
+
+    function resetCron() { ta.value = DEFAULT_CRON; }
+</script>
+<script src="../shared/theme-clock.js"></script>
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGFW - Status</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../shared/tokens.css">
+    <link rel="stylesheet" href="../shared/components.css">
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="brand">NGFW</div>
+    <a class="menu-item" href="status.html">Dashboard</a>
+    <div class="menu-item" onclick="toggleMenu('status-menu');"><span>Status</span><span class="caret" id="status-menu-caret">▸</span></div>
+    <div class="sub-menu open" id="status-menu">
+        <a class="menu-item active" href="status.html">Overview</a>
+        <a class="menu-item" href="routing.html">Routing</a>
+        <a class="menu-item" href="firewall.html">Firewall</a>
+        <a class="menu-item" href="logs.html">System Logs</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('system-menu');"><span>System</span><span class="caret" id="system-menu-caret">▸</span></div>
+    <div class="sub-menu" id="system-menu">
+        <a class="menu-item" href="system.html">System</a>
+        <a class="menu-item" href="administration.html">Administration</a>
+        <a class="menu-item" href="software.html">Software</a>
+        <a class="menu-item" href="startup.html">Startup</a>
+        <a class="menu-item" href="scheduled.html">Scheduled Tasks</a>
+        <a class="menu-item" href="backup.html">Backup / Flash Firmware</a>
+        <a class="menu-item" href="reboot.html">Reboot</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('network-menu');"><span>Network</span><span class="caret" id="network-menu-caret">▸</span></div>
+    <div class="sub-menu" id="network-menu">
+        <a class="menu-item" href="interfaces.html">Interfaces</a>
+        <a class="menu-item" href="routing.html">Routing</a>
+        <a class="menu-item" href="dhcp.html">DHCP</a>
+        <a class="menu-item" href="dns.html">DNS</a>
+        <a class="menu-item" href="diagnostics.html">Diagnostics</a>
+        <a class="menu-item" href="firewall.html">Firewall</a>
+    </div>
+    <a href="#" class="menu-item" style="margin-top: auto;">Log out</a>
+</div>
+
+
+
+<div class="main-content">
+    <div class="top-header">
+        <div class="header-left"><div class="page-title">Status Overview</div></div>
+        <div class="header-right">
+            <div class="time-display" id="liveTime">--:--:--</div>
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color theme">
+                <span id="themeIcon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span id="themeLabel">Dark</span>
+            </button>
+            <div class="status-badge">● Refreshing</div>
+        </div>
+    </div>
+
+    <div class="page-container">
+
+        <!-- SYSTEM -->
+        <!-- maps to: ubus call system board / ubus call system info -->
+        <div class="panel-card" id="panel-system">
+            <div class="section-header">
+                <div class="panel-title" style="margin-bottom:0;">System</div>
+                <span class="section-toggle" onclick="toggleSection('panel-system', this)">Hide</span>
+            </div>
+            <div class="section-body">
+                <div class="identity-hero-grid">
+                    <div class="identity-hero">
+                        <div class="identity-hero-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+                        <div>
+                            <div class="identity-hero-name">OpenWrt</div>
+                            <div class="identity-hero-sub">Lanner Electronics Inc. NCA-1515</div>
+                        </div>
+                    </div>
+                    <div class="identity-hero alt">
+                        <div class="identity-hero-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></div>
+                        <div>
+                            <div class="identity-hero-name">25.12.3</div>
+                            <div class="identity-hero-sub">r32912-6639b15f62 &middot; kernel 6.12.85</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-tile-grid">
+                    <div class="stat-tile">
+                        <div class="stat-tile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg></div>
+                        <div>
+                            <div class="stat-tile-label">Architecture</div>
+                            <div class="stat-tile-value">Intel(R) Atom(TM) CPU C3558 @ 2.20GHz</div>
+                        </div>
+                    </div>
+                    <div class="stat-tile">
+                        <div class="stat-tile-icon c-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/></svg></div>
+                        <div>
+                            <div class="stat-tile-label">Target Platform</div>
+                            <div class="stat-tile-value">x86/64</div>
+                        </div>
+                    </div>
+                    <div class="stat-tile">
+                        <div class="stat-tile-icon c-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></div>
+                        <div>
+                            <div class="stat-tile-label">Uptime</div>
+                            <div class="stat-tile-value">2h 24m 4s</div>
+                        </div>
+                    </div>
+                    <div class="stat-tile">
+                        <div class="stat-tile-icon c-amber"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+                        <div>
+                            <div class="stat-tile-label">Load Average</div>
+                            <div class="stat-tile-value">0.00, 0.00, 0.00</div>
+                        </div>
+                    </div>
+                    <div class="stat-tile">
+                        <div class="stat-tile-icon c-slate"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                        <div>
+                            <div class="stat-tile-label">Local Time</div>
+                            <div class="stat-tile-value" id="local-time">Sep 25, 2026, 6:38:20 AM UTC</div>
+                        </div>
+                    </div>
+                    <div class="stat-tile">
+                        <div class="stat-tile-icon c-pink"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg></div>
+                        <div>
+                            <div class="stat-tile-label">Full Version String</div>
+                            <div class="stat-tile-value" style="font-weight:600; font-size:12px;">LuCI (HEAD detached at 650a6ca3) branch 26.124.63982~650a6ca</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MEMORY -->
+        <!-- maps to: ubus call system info -> memory -->
+        <div class="panel-card" id="panel-memory">
+            <div class="section-header">
+                <div class="panel-title" style="margin-bottom:0;">Memory</div>
+                <span class="section-toggle" onclick="toggleSection('panel-memory', this)">Hide</span>
+            </div>
+            <div class="section-body">
+                <div class="donut-row">
+                    <div class="donut-tile">
+                        <div class="donut-gauge" style="--pct:100; --accent: var(--primary);"><div class="donut-gauge-value">3.85</div></div>
+                        <div class="donut-tile-label">Total Available</div>
+                        <div class="donut-tile-sub">3.85 GiB / 4 GiB</div>
+                    </div>
+                    <div class="donut-tile">
+                        <div class="donut-gauge" style="--pct:16; --accent: var(--danger);"><div class="donut-gauge-value">16%</div></div>
+                        <div class="donut-tile-label">Used</div>
+                        <div class="donut-tile-sub">612 MiB</div>
+                    </div>
+                    <div class="donut-tile">
+                        <div class="donut-gauge" style="--pct:2; --accent: var(--warning);"><div class="donut-gauge-value">2%</div></div>
+                        <div class="donut-tile-label">Buffered</div>
+                        <div class="donut-tile-sub">84 MiB</div>
+                    </div>
+                    <div class="donut-tile">
+                        <div class="donut-gauge" style="--pct:31; --accent: var(--success);"><div class="donut-gauge-value">31%</div></div>
+                        <div class="donut-tile-label">Cached</div>
+                        <div class="donut-tile-sub">1.21 GiB</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STORAGE -->
+        <!-- maps to: ubus call system info -> statfs, per mountpoint -->
+        <div class="panel-card" id="panel-storage">
+            <div class="section-header">
+                <div class="panel-title" style="margin-bottom:0;">Storage</div>
+                <span class="section-toggle" onclick="toggleSection('panel-storage', this)">Hide</span>
+            </div>
+            <div class="section-body">
+                <div class="donut-row cols-3">
+                    <div class="donut-tile">
+                        <div class="donut-gauge" style="--pct:27; --accent: var(--primary);"><div class="donut-gauge-value">27%</div></div>
+                        <div class="donut-tile-label">Disk space</div>
+                        <div class="donut-tile-sub">2.1 GiB / 7.7 GiB</div>
+                    </div>
+                    <div class="donut-tile">
+                        <div class="donut-gauge" style="--pct:9; --accent: var(--warning);"><div class="donut-gauge-value">9%</div></div>
+                        <div class="donut-tile-label">Temp space</div>
+                        <div class="donut-tile-sub">48 MiB / 512 MiB</div>
+                    </div>
+                    <div class="donut-tile">
+                        <div class="donut-gauge" style="--pct:25; --accent: var(--success);"><div class="donut-gauge-value">25%</div></div>
+                        <div class="donut-tile-label">/dev/sda1 (/boot)</div>
+                        <div class="donut-tile-sub">38 MiB / 150 MiB</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PORT STATUS -->
+        <!-- maps to: ubus call network.device status, per physical port -->
+        <div class="panel-card" id="panel-ports">
+            <div class="section-header">
+                <div class="panel-title" style="margin-bottom:0;">Port status</div>
+                <span class="section-toggle" onclick="toggleSection('panel-ports', this)">Hide</span>
+            </div>
+            <div class="section-body">
+                <div class="port-grid" id="port-grid"></div>
+            </div>
+        </div>
+
+        <!-- NETWORK -->
+        <!-- maps to: ubus call network.interface.wan status -->
+        <div class="panel-card" id="panel-network">
+            <div class="section-header">
+                <div class="panel-title" style="margin-bottom:0;">Network</div>
+                <span class="section-toggle" onclick="toggleSection('panel-network', this)">Hide</span>
+            </div>
+            <div class="section-body">
+                <div class="panel-title" style="font-size:14px;">IPv4 Upstream</div>
+                <div class="upstream-grid">
+                    <div class="system-list">
+                        <div class="system-list-item"><div class="label">Protocol</div><div class="value">Static address</div></div>
+                        <div class="system-list-item"><div class="label">Address</div><div class="value">31.1.1.2/24</div></div>
+                        <div class="system-list-item"><div class="label">Gateway</div><div class="value">31.1.1.100</div></div>
+                        <div class="system-list-item"><div class="label">Connected</div><div class="value">2h 23m 49s</div></div>
+                    </div>
+                    <div class="system-list">
+                        <div class="system-list-item"><div class="label">Device</div><div class="value">Ethernet Adapter: "eth7"</div></div>
+                        <div class="system-list-item"><div class="label">MAC address</div><div class="value">00:90:0B:B7:10:96</div></div>
+                        <div class="system-list-item"><div class="label">Active Connections</div><div class="value">—</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DHCP LEASES -->
+        <!-- maps to: ubus call dhcp ipv4leases / dnsmasq lease file -->
+        <div class="panel-card" id="panel-dhcp">
+            <div class="section-header">
+                <div class="panel-title" style="margin-bottom:0;">DHCP Leases</div>
+                <span class="section-toggle" onclick="toggleSection('panel-dhcp', this)">Hide</span>
+            </div>
+            <div class="section-body">
+                <div class="empty-state compact">
+                    <div class="empty-state-desc" style="margin-bottom:0;">No active leases found</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-footer">
+            Powered by LuCI (HEAD detached at 650a6ca3) branch (26.124.63982~650a6ca) &nbsp;|&nbsp; ArgonTheme v2.4.5 &nbsp;|&nbsp; OpenWrt 25.12.3-r32912-6639b15f62
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleMenu(menuId) {
+        var subMenu = document.getElementById(menuId);
+        var caretId = menuId.replace('-menu', '-menu-caret');
+        var caret = document.getElementById(caretId);
+        if (!subMenu || !caret) return;
+        var isOpen = subMenu.classList.toggle('open');
+        caret.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+
+    function toggleSection(panelId, toggleEl) {
+        var panel = document.getElementById(panelId);
+        var collapsed = panel.classList.toggle('collapsed');
+        toggleEl.textContent = collapsed ? 'Show' : 'Hide';
+    }
+
+    // Port data — one entry per physical port. Swap this for a live
+    // ubus call (network.device status) once wired to the device.
+    var PORTS = [
+        { name: 'eth0', link: 'no link', network: 'lan: Bridge: "br-lan"', rxBytes: '0 B', txBytes: '0 B', rxPkts: '0 Pkts.', rxMulticast: '0 Pkts.', rxErrors: '0 Pkts.', rxDropped: '0 Pkts.', txPkts: '0 Pkts.', txErrors: '0 Pkts.', txDropped: '4 Pkts.', collisions: '0' },
+        { name: 'eth1', link: 'no link', network: 'lan: Bridge: "br-lan"', rxBytes: '0 B', txBytes: '0 B', rxPkts: '0 Pkts.', rxMulticast: '0 Pkts.', rxErrors: '0 Pkts.', rxDropped: '0 Pkts.', txPkts: '0 Pkts.', txErrors: '0 Pkts.', txDropped: '0 Pkts.', collisions: '0' },
+        { name: 'eth2', link: 'no link', network: 'lan: Bridge: "br-lan"', rxBytes: '0 B', txBytes: '0 B', rxPkts: '0 Pkts.', rxMulticast: '0 Pkts.', rxErrors: '0 Pkts.', rxDropped: '0 Pkts.', txPkts: '0 Pkts.', txErrors: '0 Pkts.', txDropped: '0 Pkts.', collisions: '0' },
+        { name: 'eth3', link: 'no link', network: 'lan: Bridge: "br-lan"', rxBytes: '0 B', txBytes: '0 B', rxPkts: '0 Pkts.', rxMulticast: '0 Pkts.', rxErrors: '0 Pkts.', rxDropped: '0 Pkts.', txPkts: '0 Pkts.', txErrors: '0 Pkts.', txDropped: '0 Pkts.', collisions: '0' },
+        { name: 'eth4', link: 'no link', network: 'eth4: Ethernet Adapter: "eth4"', rxBytes: '0 B', txBytes: '0 B', rxPkts: '0 Pkts.', rxMulticast: '0 Pkts.', rxErrors: '0 Pkts.', rxDropped: '0 Pkts.', txPkts: '0 Pkts.', txErrors: '0 Pkts.', txDropped: '0 Pkts.', collisions: '0' },
+        { name: 'eth5', link: 'no link', network: 'eth5: Ethernet Adapter: "eth5"', rxBytes: '0 B', txBytes: '0 B', rxPkts: '0 Pkts.', rxMulticast: '0 Pkts.', rxErrors: '0 Pkts.', rxDropped: '0 Pkts.', txPkts: '0 Pkts.', txErrors: '0 Pkts.', txDropped: '0 Pkts.', collisions: '0' },
+        { name: 'eth6', link: 'no link', network: 'eth6: Ethernet Adapter: "eth6"', rxBytes: '0 B', txBytes: '0 B', rxPkts: '0 Pkts.', rxMulticast: '0 Pkts.', rxErrors: '0 Pkts.', rxDropped: '0 Pkts.', txPkts: '0 Pkts.', txErrors: '0 Pkts.', txDropped: '0 Pkts.', collisions: '0' },
+        { name: 'eth7', link: '1 GbE', network: 'wan: Ethernet Adapter: "eth7"', rxBytes: '1.34 MiB', txBytes: '3.97 MiB', rxPkts: '10.39 KPkts.', rxMulticast: '5.70 KPkts.', rxErrors: '280 Pkts.', rxDropped: '1.57 KPkts.', txPkts: '3.29 KPkts.', txErrors: '0 Pkts.', txDropped: '0 Pkts.', collisions: '0' }
+    ];
+
+    function renderPorts() {
+        var grid = document.getElementById('port-grid');
+        grid.innerHTML = PORTS.map(function (p, i) {
+            var isUp = p.link !== 'no link';
+            return (
+                '<div class="port-card' + (isUp ? ' link-up' : '') + '" id="port-card-' + i + '">' +
+                    '<div class="port-card-header">' +
+                        '<span class="port-card-name">' + p.name + '</span>' +
+                        '<span class="port-link-pill' + (isUp ? ' up' : '') + '">' + p.link + '</span>' +
+                    '</div>' +
+                    '<div class="port-card-network">Part of: <span class="zone-chip lan" style="padding:0 6px; font-size:10px;">' + p.network + '</span></div>' +
+                    '<div class="port-traffic"><span class="up-arrow">▲ ' + p.txBytes + '</span><span class="down-arrow">▼ ' + p.rxBytes + '</span></div>' +
+                    '<span class="port-details-toggle" onclick="togglePort(' + i + ')">Details</span>' +
+                    '<div class="port-stat-grid">' +
+                        '<div class="stat-label">Received bytes</div><div class="stat-value">' + p.rxBytes + '</div>' +
+                        '<div class="stat-label">Received packets</div><div class="stat-value">' + p.rxPkts + '</div>' +
+                        '<div class="stat-label">Received multicast</div><div class="stat-value">' + p.rxMulticast + '</div>' +
+                        '<div class="stat-label">Receive errors</div><div class="stat-value">' + p.rxErrors + '</div>' +
+                        '<div class="stat-label">Receive dropped</div><div class="stat-value">' + p.rxDropped + '</div>' +
+                        '<div class="stat-label">Transmitted bytes</div><div class="stat-value">' + p.txBytes + '</div>' +
+                        '<div class="stat-label">Transmitted packets</div><div class="stat-value">' + p.txPkts + '</div>' +
+                        '<div class="stat-label">Transmit errors</div><div class="stat-value">' + p.txErrors + '</div>' +
+                        '<div class="stat-label">Transmit dropped</div><div class="stat-value">' + p.txDropped + '</div>' +
+                        '<div class="stat-label">Collisions seen</div><div class="stat-value">' + p.collisions + '</div>' +
+                    '</div>' +
+                '</div>'
+            );
+        }).join('');
+    }
+
+    function togglePort(index) {
+        var card = document.getElementById('port-card-' + index);
+        var toggle = card.querySelector('.port-details-toggle');
+        var expanded = card.classList.toggle('expanded');
+        toggle.textContent = expanded ? 'Hide details' : 'Details';
+    }
+
+    renderPorts();
+</script>
+<script src="../shared/theme-clock.js"></script>
+</body>
+</html>

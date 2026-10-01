@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGFW - Firewall</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../shared/tokens.css">
+    <link rel="stylesheet" href="../shared/components.css">
+    <style>
+        /* Page-scoped styles for the Interfaces page (uses shared theme variables). */
+
+        :root {
+            /* Navy: set --if-navy to your sidebar colour if it differs (e.g. var(--sidebar-bg)). */
+            --if-navy: #14213d;
+            --if-navy-2: #1f3560;
+            --if-navy-grad: linear-gradient(135deg, var(--if-navy) 0%, var(--if-navy-2) 100%);
+            --if-green: #22a06b; /* only colour used besides the theme accent: "connected" dot */
+            --if-shadow-sm: 0 1px 1px rgba(15, 23, 42, 0.06), 0 3px 6px rgba(15, 23, 42, 0.08), 0 8px 16px -4px rgba(15, 23, 42, 0.10);
+            --if-shadow-md: 0 2px 3px rgba(15, 23, 42, 0.08), 0 8px 16px rgba(15, 23, 42, 0.12), 0 22px 36px -8px rgba(15, 23, 42, 0.18);
+            --if-shadow-lg: 0 4px 8px rgba(15, 23, 42, 0.10), 0 24px 48px rgba(15, 23, 42, 0.22);
+            --if-shadow-modal: 0 10px 20px rgba(2, 6, 23, 0.18), 0 40px 90px rgba(2, 6, 23, 0.35);
+        }
+
+        /* ---------- Summary strip ---------- */
+        .if-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
+        .if-summary-tile {
+            position: relative; display: flex; align-items: center; gap: 14px;
+            background: linear-gradient(160deg, var(--bg-card) 0%, var(--surface-alt) 140%);
+            border: 1px solid var(--border-color); border-radius: 14px; padding: 16px 18px;
+            box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .if-summary-tile:hover { box-shadow: var(--if-shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.35); transform: translateY(-1px); }
+        .if-summary-icon {
+            flex: 0 0 auto; width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+            font-size: 17px; color: var(--text-muted);
+            background: linear-gradient(180deg, var(--bg-card), var(--surface-alt));
+            border: 1px solid var(--border-color);
+            box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+        .if-summary-tile .n { font-size: 22px; font-weight: 700; color: var(--text-main); line-height: 1.1; letter-spacing: -0.3px; }
+        .if-summary-tile .l { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+        /* ---------- Card grid ---------- */
+        .if-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; margin-bottom: 20px; }
+
+        .if-card {
+            display: flex; flex-direction: column; overflow: hidden;
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px;
+            box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .if-card:hover { box-shadow: var(--if-shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.35); transform: translateY(-2px); }
+        .if-card.is-down .if-port { filter: grayscale(1); opacity: 0.55; }
+
+        /* Head: port glyph, name, status */
+        .if-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 14px; }
+        .if-port {
+            flex: 0 0 auto; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+            background: var(--if-navy-grad);
+            box-shadow: 0 6px 12px -4px rgba(20, 33, 61, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+        }
+        .if-port svg { width: 22px; height: 22px; }
+        .if-title { min-width: 0; flex: 1 1 auto; }
+        .if-name { font-size: 15.5px; font-weight: 600; color: var(--text-main); letter-spacing: -0.2px; line-height: 1.25; }
+        .if-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+        .if-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+        .if-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); opacity: 0.45; }
+        .if-status.up { color: var(--text-main); }
+        .if-status.up::before { background: var(--if-green); opacity: 1; box-shadow: 0 0 0 3px rgba(34, 160, 107, 0.16); }
+
+        .if-device-tag {
+            font-size: 11px; font-weight: 600; color: var(--text-muted);
+            background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 6px; padding: 2px 7px;
+        }
+
+        /* Body: quiet key/value rows */
+        .if-body { padding: 0 18px 14px; }
+        .if-rows { display: grid; grid-template-columns: auto 1fr; gap: 7px 16px; font-size: 13px; }
+        .if-rows .k { color: var(--text-muted); }
+        .if-rows .v { text-align: right; color: var(--text-main); font-weight: 500; }
+        .if-rows .v.mono, .mono { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12.5px; }
+        .if-bridge-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+
+        /* Traffic: two halves split by a hairline */
+        .if-io { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border-color); }
+        .if-io > div { padding: 12px 18px; }
+        .if-io > div + div { border-left: 1px solid var(--border-color); }
+        .if-io-label { font-size: 11.5px; color: var(--text-muted); }
+        .if-io-value { font-size: 14px; font-weight: 600; color: var(--text-main); margin-top: 2px; letter-spacing: -0.1px; }
+        .if-io-pkts { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+
+        /* Expandable details */
+        .if-details { display: none; padding: 12px 18px 14px; border-top: 1px solid var(--border-color); background: var(--surface-alt); box-shadow: inset 0 3px 6px -4px rgba(0, 0, 0, 0.12); }
+        .if-card.expanded .if-details { display: block; }
+
+        /* Footer: toggle on the left, actions on the right */
+        .if-foot {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto;
+            padding: 10px 12px 10px 18px; background: var(--surface-alt); border-top: 1px solid var(--border-color);
+        }
+        .if-details-toggle { font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 5px; }
+        .if-details-toggle:hover { color: var(--text-main); }
+        .if-details-toggle .chevron { transition: transform 0.15s ease; font-size: 10px; }
+        .if-card.expanded .if-details-toggle .chevron { transform: rotate(90deg); }
+        .if-actions { display: flex; gap: 6px; }
+        .if-actions .btn { padding: 5px 11px; font-size: 12px; box-shadow: var(--if-shadow-sm); }
+        .if-actions .btn:hover { box-shadow: var(--if-shadow-md); }
+        .if-actions .btn:active { box-shadow: none; }
+
+        /* Devices tab */
+        .dev-type-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: var(--surface-alt); border: 1px solid var(--border-color); color: var(--text-muted); }
+        .table-scroll { border-radius: 14px; box-shadow: var(--if-shadow-sm); }
+        .data-table tbody tr { transition: background 0.12s ease; }
+        .data-table tbody tr:hover { background: var(--surface-alt); }
+
+        /* Panels used inside tabs and the modal */
+        .panel-card { box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+        .view-footer-actions .btn-primary, .modal-footer .btn-primary {
+            background: var(--if-navy-grad); border-color: var(--if-navy); color: #fff;
+            box-shadow: 0 6px 14px -4px rgba(20, 33, 61, 0.6);
+        }
+
+        /* ---------- Modal ---------- */
+        body.modal-open { overflow: hidden; }
+
+        .modal-backdrop {
+            position: fixed; inset: 0; z-index: 1000;
+            display: none; align-items: center; justify-content: center; padding: 24px;
+            background: rgba(8, 12, 24, 0.55);
+            -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%);
+        }
+        .modal-backdrop.open { display: flex; animation: modal-fade 0.18s ease-out; }
+
+        .modal-dialog {
+            display: flex; flex-direction: column;
+            width: 100%; max-width: 1080px; height: min(880px, calc(100vh - 48px));
+            background: var(--bg-card); color: var(--text-main);
+            border: 1px solid var(--border-color); border-radius: 18px;
+            box-shadow: var(--if-shadow-modal);
+            overflow: hidden;
+            animation: modal-pop 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+        }
+
+        .modal-header {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 22px 28px 0 28px;
+            background: linear-gradient(180deg, var(--surface-alt) 0%, var(--bg-card) 100%);
+        }
+        .modal-title { font-size: 20px; font-weight: 700; letter-spacing: -0.2px; }
+        .modal-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .modal-close {
+            flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; cursor: pointer;
+            display: grid; place-items: center; font-size: 18px; line-height: 1;
+            background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-color);
+            box-shadow: var(--if-shadow-sm); transition: color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .modal-close:hover { color: var(--text-main); box-shadow: var(--if-shadow-md); }
+
+        .modal-tabs { padding: 14px 28px 0 28px; background: var(--bg-card); border-bottom: 1px solid var(--border-color); }
+        .modal-tabs .tabs { margin-bottom: 0; }
+
+        .modal-body {
+            flex: 1 1 auto; overflow-y: auto; padding: 24px 28px;
+            background: var(--surface-alt);
+            box-shadow: inset 0 6px 8px -8px rgba(0, 0, 0, 0.25), inset 0 -6px 8px -8px rgba(0, 0, 0, 0.25);
+        }
+        .modal-body .panel-card:last-child { margin-bottom: 0; }
+
+        .modal-footer {
+            display: flex; justify-content: flex-end; gap: 10px; padding: 16px 28px;
+            background: var(--bg-card); border-top: 1px solid var(--border-color);
+            box-shadow: 0 -8px 16px -12px rgba(0, 0, 0, 0.2);
+        }
+
+        @keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modal-pop { from { opacity: 0; transform: translateY(14px) scale(0.97); } to { opacity: 1; transform: none; } }
+
+        @media (max-width: 900px) { .if-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 600px) {
+            .modal-backdrop { padding: 0; align-items: flex-end; }
+            .modal-dialog { height: 94vh; max-width: none; border-radius: 18px 18px 0 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .modal-backdrop.open, .modal-dialog { animation: none; }
+            .if-card, .if-summary-tile, .if-actions .btn { transition: none; }
+        }
+
+        /* ---------- Depth pass: stronger, layered shading ---------- */
+        .if-summary-tile {
+            background: linear-gradient(180deg, var(--bg-card) 0%, var(--surface-alt) 100%);
+            box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -2px 0 rgba(0, 0, 0, 0.04);
+        }
+        .if-summary-icon {
+            box-shadow: 0 3px 6px rgba(15, 23, 42, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -2px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .if-card {
+            background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card) 60%, var(--surface-alt) 100%);
+            border-color: color-mix(in srgb, var(--border-color) 80%, rgba(15, 23, 42, 0.25));
+            box-shadow:
+                var(--if-shadow-md),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+        }
+        .if-card:hover {
+            box-shadow:
+                var(--if-shadow-lg),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+            transform: translateY(-3px);
+        }
+
+        /* header sits on a soft light-to-transparent wash so it reads as its own layer */
+        .if-head { background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent); }
+        .if-port {
+            box-shadow:
+                0 8px 14px -4px rgba(20, 33, 61, 0.6),
+                0 2px 3px rgba(20, 33, 61, 0.35),
+                inset 0 1px 0 rgba(255, 255, 255, 0.28),
+                inset 0 -3px 6px rgba(0, 0, 0, 0.25);
+        }
+
+        /* traffic strip becomes a recessed well */
+        .if-io { background: var(--surface-alt); box-shadow: inset 0 3px 6px -3px rgba(0, 0, 0, 0.16), inset 0 -1px 0 rgba(255, 255, 255, 0.5); }
+        .if-io-value { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4); }
+
+        .if-foot {
+            background: linear-gradient(180deg, var(--surface-alt), color-mix(in srgb, var(--surface-alt) 88%, rgba(15, 23, 42, 0.12)));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        }
+        .if-actions .btn {
+            background: linear-gradient(180deg, var(--bg-card), var(--surface-alt));
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 3px 6px -2px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+        .if-actions .btn:active { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18); transform: translateY(1px); }
+
+        .view-footer-actions .btn-primary, .modal-footer .btn-primary {
+            box-shadow: 0 8px 16px -4px rgba(20, 33, 61, 0.55), 0 2px 3px rgba(20, 33, 61, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .panel-card {
+            background: linear-gradient(180deg, var(--bg-card), color-mix(in srgb, var(--bg-card) 94%, var(--surface-alt)));
+            box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+        }
+        .table-scroll { box-shadow: var(--if-shadow-md); }
+
+        /* popup: deeper elevation, layered header/footer */
+        .modal-dialog { box-shadow: 0 2px 4px rgba(2, 6, 23, 0.2), 0 24px 48px rgba(2, 6, 23, 0.35), 0 60px 120px rgba(2, 6, 23, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+        .modal-header { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+        .modal-tabs { box-shadow: 0 6px 10px -8px rgba(0, 0, 0, 0.25); position: relative; z-index: 1; }
+        .modal-footer { background: linear-gradient(180deg, var(--bg-card), var(--surface-alt)); box-shadow: 0 -10px 18px -12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+        .modal-body .panel-card { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 6px 14px -4px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.7); }
+
+        /* Port tile: flat navy, no shading */
+        .if-port { background: var(--if-navy); box-shadow: none; }
+
+        /* ---------- Devices tab ---------- */
+        .dev-name-row { display: flex; align-items: center; gap: 8px; }
+        .dev-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); opacity: 0.45; flex: 0 0 auto; }
+        .dev-dot.up { background: var(--if-green); opacity: 1; box-shadow: 0 0 0 3px rgba(34, 160, 107, 0.16); }
+        .dev-name { font-weight: 600; color: var(--text-main); }
+        .dev-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; padding-left: 15px; }
+        .dev-actions { display: inline-flex; gap: 6px; justify-content: flex-end; }
+        .dev-actions .btn { padding: 5px 12px; font-size: 12px; }
+        .dev-actions .btn[disabled] { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+        tr.dev-unconfigured .dev-name, tr.dev-unconfigured td.mono { opacity: 0.6; }
+
+        .dev-ports { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; padding: 10px; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06); }
+        .dev-port { display: flex; align-items: center; gap: 7px; padding: 7px 10px; font-size: 13px; color: var(--text-main); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 9px; cursor: pointer; box-shadow: var(--if-shadow-sm); }
+        .dev-port input { margin: 0; }
+
+        .dev-vlan-input { width: 110px; }
+        .dev-empty-row td { text-align: center; color: var(--text-muted); font-style: italic; padding: 18px 12px; }
+
+        /* Global options: dynamic list + inline code */
+        .dyn-list { display: flex; flex-direction: column; gap: 8px; }
+        .dyn-row { display: flex; gap: 8px; }
+        .dyn-row input { flex: 1 1 auto; }
+        .dyn-row .btn { flex: 0 0 auto; padding: 6px 12px; }
+        .field-hint code { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 11.5px; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 5px; padding: 1px 5px; }
+        .field-hint a { color: var(--primary); }
+    
+        /* ---------- Network > Routing ---------- */
+        .rt-intro { margin-bottom: 20px; }
+        .rt-intro p { margin: 0 0 6px; font-size: 13.5px; line-height: 1.6; color: var(--text-muted); }
+        .rt-intro p:last-child { margin-bottom: 0; }
+        .rt-intro p:first-child { color: var(--text-main); }
+        .rt-off td:not(:last-child):not(:nth-last-child(2)) { opacity: 0.55; }
+        .rt-add-row { display: flex; justify-content: flex-end; margin-top: 16px; }
+
+        /* ---------- Refinement pass: typography, controls, tables, focus ---------- */
+        ::selection { background: color-mix(in srgb, var(--if-navy-2) 25%, transparent); }
+        body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+        .mono, .if-io-value, .if-summary-tile .n, .data-table td { font-variant-numeric: tabular-nums; }
+
+        /* Tabs: segmented control */
+        .tabs {
+            display: inline-flex; gap: 4px; padding: 4px; max-width: 100%; overflow-x: auto;
+            background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 12px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+        }
+        .tabs .tab {
+            border: none; border-bottom: none; background: transparent; border-radius: 9px;
+            padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap;
+            cursor: pointer; box-shadow: none; transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+        }
+        .tabs .tab::after { display: none; }
+        .tabs .tab:hover { color: var(--text-main); }
+        .tabs .tab.active {
+            background: var(--bg-card); color: var(--text-main);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 4px 10px -3px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+        .modal-tabs { padding: 14px 28px; }
+
+        /* Forms */
+        .form-grid-2col { gap: 18px 24px; }
+        .form-group > label { display: block; font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; }
+        .field-hint { font-size: 12px; line-height: 1.55; color: var(--text-muted); margin-top: 6px; }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group input[type="password"], .form-group select {
+            min-height: 38px; border-radius: 10px; font-size: 13.5px;
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.07);
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none; border-color: var(--if-navy-2);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--if-navy-2) 22%, transparent), inset 0 1px 2px rgba(15, 23, 42, 0.07);
+        }
+        .form-group input::placeholder { color: var(--text-muted); opacity: 0.65; }
+        .panel-title { font-size: 14px; font-weight: 700; letter-spacing: -0.1px; padding-bottom: 12px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); }
+
+        /* Switches: navy when on */
+        .switch input:checked + .slider { background: var(--if-navy-2); }
+
+        /* Buttons */
+        .btn { font-weight: 600; border-radius: 10px; transition: box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease, border-color 0.15s ease; }
+        .btn:active { transform: translateY(1px); }
+        .modal-footer .btn { min-width: 96px; }
+        .btn:focus-visible, .tabs .tab:focus-visible, .modal-close:focus-visible, .if-details-toggle:focus-visible { outline: 2px solid var(--if-navy-2); outline-offset: 2px; }
+        .switch input:focus-visible + .slider { outline: 2px solid var(--if-navy-2); outline-offset: 2px; }
+
+        /* Tables */
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .data-table thead th {
+            background: var(--surface-alt); color: var(--text-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.2px;
+            text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--border-color); white-space: nowrap;
+        }
+        .data-table tbody td { padding: 13px 16px; font-size: 13px; vertical-align: middle; border-bottom: 1px solid var(--border-color); }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+
+        /* Scrollbars inside popups */
+        .modal-body { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text-muted) 45%, transparent) transparent; }
+        .modal-body::-webkit-scrollbar { width: 10px; }
+        .modal-body::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text-muted) 40%, transparent); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+
+
+        /* Routing page polish */
+        .rt-intro { padding: 18px 22px; }
+        .rt-intro p:first-child { font-size: 14.5px; font-weight: 600; letter-spacing: -0.1px; margin-bottom: 8px; }
+        .tab-count {
+            display: inline-block; min-width: 20px; margin-left: 8px; padding: 1px 7px; border-radius: 999px;
+            font-size: 11px; font-weight: 700; line-height: 1.6; text-align: center;
+            color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 14%, transparent);
+        }
+        .tabs .tab.active .tab-count { color: #fff; background: var(--if-navy-2); }
+        .dev-empty-row td { padding: 34px 16px; font-size: 13px; }
+        .panel-card .table-scroll { box-shadow: none; border: 1px solid var(--border-color); border-radius: 12px; }
+        .rt-add-row { padding-top: 4px; }
+    
+        /* ---------- Network > DHCP ---------- */
+        .dh-intro { margin-bottom: 20px; padding: 18px 22px; }
+        .dh-intro p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.65; color: var(--text-muted); }
+        .dh-intro p:last-child { margin-bottom: 0; }
+        .dh-intro code, .panel-card p code { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12px; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 5px; padding: 1px 5px; }
+        .dh-note { margin: 0 0 16px; font-size: 13px; line-height: 1.6; color: var(--text-muted); }
+        .dh-note a { color: var(--primary); }
+        .tabs-sub { margin-bottom: 20px; }
+        .chk-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+        .modal-dialog.modal-fit { height: auto; max-height: calc(100vh - 48px); max-width: 820px; }
+        .modal-header.solo { padding-bottom: 18px; border-bottom: 1px solid var(--border-color); }
+        .rec-alert {
+            margin-right: auto; align-self: center; font-size: 12.5px; color: var(--text-main);
+            padding: 7px 12px; border: 1px solid var(--border-color); border-radius: 10px;
+            background: var(--surface-alt); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+        }
+        .inst-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .inst-row input { flex: 1 1 240px; max-width: 340px; }
+        .inst-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+        .tbl-cell-list { line-height: 1.5; }
+        .panel-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+        /* Small navy touch: flat icon tile before section titles */
+        .panel-title.dh-ico { display: flex; align-items: center; gap: 10px; }
+        .panel-title.dh-ico::before {
+            content: ''; flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px;
+            background: var(--if-navy) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 6h16M4 12h16M4 18h10'/%3E%3C/svg%3E") center / 15px no-repeat;
+        }
+    
+        /* ---------- Network > DNS ---------- */
+        .rr-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+        .tabs { max-width: 100%; }
+    
+        /* ---------- Network > Diagnostics ---------- */
+        .diag-row { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; }
+        .diag-input { flex: 1 1 260px; margin: 0; }
+        .diag-input input { width: 100%; }
+
+        .diag-row .btn-primary, .diag-row .split-caret {
+            background: var(--if-navy-grad); border-color: var(--if-navy); color: #fff;
+            box-shadow: 0 6px 14px -4px rgba(20, 33, 61, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -2px 4px rgba(0, 0, 0, 0.18);
+        }
+        .diag-row .btn-primary[disabled] { opacity: 0.6; cursor: wait; }
+        .split-btn { position: relative; display: inline-flex; }
+        .split-btn .btn-main { border-radius: 10px 0 0 10px; min-width: 132px; }
+        .split-btn .split-caret { border-radius: 0 10px 10px 0; border-left: 1px solid rgba(255, 255, 255, 0.28); padding: 0 12px; font-size: 12px; }
+        .split-btn.single .btn-main { border-radius: 10px; }
+        .split-menu {
+            display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; min-width: 100%;
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 5px;
+            box-shadow: var(--if-shadow-md);
+        }
+        .split-btn.open .split-menu { display: block; }
+        .split-menu button {
+            display: block; width: 100%; text-align: left; white-space: nowrap; padding: 8px 14px;
+            background: transparent; border: none; border-radius: 8px; cursor: pointer;
+            font: inherit; font-size: 13px; font-weight: 500; color: var(--text-main);
+        }
+        .split-menu button:hover { background: var(--surface-alt); }
+        .split-menu button.sel { font-weight: 700; }
+
+        .diag-out { display: none; margin-top: 16px; }
+        .diag-out.show { display: block; }
+        .diag-out-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: var(--text-muted); }
+        .diag-out pre {
+            margin: 0; padding: 14px 16px; max-height: 320px; overflow: auto;
+            font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12.5px; line-height: 1.6; color: var(--text-main);
+            background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 12px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.10); white-space: pre-wrap; word-break: break-word;
+        }
+        .diag-out .btn { padding: 4px 10px; font-size: 12px; }
+    
+        /* ---------- Network > Firewall ---------- */
+        .fw-title { font-size: 15px; font-weight: 700; letter-spacing: -0.1px; color: var(--text-main); margin-bottom: 8px; }
+        .fw-lines { line-height: 1.55; font-size: 12.5px; }
+        .fw-lines div:first-child { font-weight: 600; color: var(--text-main); }
+        .fw-lines div:not(:first-child) { color: var(--text-muted); }
+        .fw-name { font-weight: 600; color: var(--text-main); }
+        .zone-block { display: flex; flex-direction: column; gap: 4px; }
+        .zone-chip { display: inline-block; align-self: flex-start; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 7px; background: var(--surface-alt); border: 1px solid var(--border-color); color: var(--text-main); }
+        .zone-nets { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; }
+        .zone-arrow { color: var(--text-muted); font-size: 14px; margin: 6px 0 2px; }
+        .zone-rej { font-size: 11.5px; font-weight: 600; letter-spacing: 0.3px; color: var(--text-muted); margin-top: 6px; }
+        .zone-cell + .zone-cell { margin-top: 8px; }
+        .pol { font-weight: 500; color: var(--text-main); }
+        .fw-check { color: var(--text-main); font-weight: 700; }
+        .fw-filter { display: flex; margin-bottom: 14px; }
+        .fw-filter input { max-width: 340px; width: 100%; }
+        .fw-sub { font-size: 13px; font-weight: 700; color: var(--text-main); margin: 4px 0 8px; }
+        .fw-count { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+
+        .modal-dialog.modal-fit.modal-wide { max-width: 1000px; }
+        .modal-header.solo { padding-bottom: 18px; border-bottom: 1px solid var(--border-color); }
+        .rec-alert { margin-right: auto; align-self: center; font-size: 12.5px; color: var(--text-main); padding: 7px 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--surface-alt); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06); }
+        .z-note { margin: 0 0 18px; font-size: 13px; line-height: 1.6; color: var(--text-muted); }
+
+        /* Dropdown multi-select */
+        .msel { position: relative; }
+        .msel-btn {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 38px; padding: 4px 10px; text-align: left;
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; cursor: pointer; font: inherit; font-size: 13.5px; color: var(--text-main);
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.07);
+        }
+        .msel.open .msel-btn { border-color: var(--if-navy-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--if-navy-2) 22%, transparent); }
+        .msel-val { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; }
+        .msel-ph { color: var(--text-muted); opacity: 0.8; }
+        .msel-chip { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: var(--surface-alt); border: 1px solid var(--border-color); color: var(--text-main); }
+        .msel-caret { flex: 0 0 auto; font-size: 11px; color: var(--text-muted); }
+        .msel-menu {
+            display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 60; max-height: 240px; overflow-y: auto; padding: 6px;
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: var(--if-shadow-md);
+        }
+        .msel.open .msel-menu { display: block; }
+        .msel-opt { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 8px; font-size: 13px; color: var(--text-main); cursor: pointer; }
+        .msel-opt:hover { background: var(--surface-alt); }
+        .msel-opt input { margin: 0; flex: 0 0 auto; }
+        .msel-empty { padding: 8px 10px; font-size: 12.5px; color: var(--text-muted); }
+
+        .panel-title > .btn-primary {
+            margin-left: 14px; padding: 6px 18px; font-size: 12.5px;
+            background: var(--if-navy-grad); border-color: var(--if-navy); color: #fff;
+            box-shadow: 0 6px 14px -4px rgba(20, 33, 61, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -2px 4px rgba(0, 0, 0, 0.18);
+        }
+
+        .row-check { width: 17px; height: 17px; accent-color: var(--if-navy-2); cursor: pointer; vertical-align: middle; margin: 0; }
+        .col-center { text-align: center; }
+        .dev-actions { white-space: nowrap; }
+
+        /* One fixed popup size for every tab / record; the body scrolls when content is long */
+        .modal-dialog.modal-fit, .modal-dialog.modal-fit.modal-wide { width: 100%; max-width: 1200px; height: min(860px, calc(100vh - 48px)); max-height: none; }
+        @media (max-width: 600px) { .modal-dialog.modal-fit, .modal-dialog.modal-fit.modal-wide { height: 94vh; max-width: none; } }
+
+        .data-table td, .data-table th { overflow-wrap: anywhere; }
+        .fw-lines div { overflow-wrap: anywhere; word-break: break-word; }
+        .dev-actions { flex-wrap: wrap; row-gap: 6px; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="brand">NGFW</div>
+    <a class="menu-item" href="status.html">Dashboard</a>
+    <div class="menu-item" onclick="toggleMenu('status-menu');"><span>Status</span><span class="caret" id="status-menu-caret">▸</span></div>
+    <div class="sub-menu" id="status-menu">
+        <a class="menu-item" href="status.html">Overview</a>
+        <a class="menu-item" href="routing.html">Routing</a>
+        <a class="menu-item" href="firewall.html">Firewall</a>
+        <a class="menu-item" href="logs.html">System Logs</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('system-menu');"><span>System</span><span class="caret" id="system-menu-caret">▸</span></div>
+    <div class="sub-menu" id="system-menu">
+        <a class="menu-item" href="system.html">System</a>
+        <a class="menu-item" href="administration.html">Administration</a>
+        <a class="menu-item" href="software.html">Software</a>
+        <a class="menu-item" href="startup.html">Startup</a>
+        <a class="menu-item" href="scheduled.html">Scheduled Tasks</a>
+        <a class="menu-item" href="backup.html">Backup / Flash Firmware</a>
+        <a class="menu-item" href="reboot.html">Reboot</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('network-menu');"><span>Network</span><span class="caret" id="network-menu-caret">▸</span></div>
+    <div class="sub-menu open" id="network-menu">
+        <a class="menu-item" href="interfaces.html">Interfaces</a>
+        <a class="menu-item" href="network-routing.html">Routing</a>
+        <a class="menu-item" href="dhcp.html">DHCP</a>
+        <a class="menu-item" href="dns.html">DNS</a>
+        <a class="menu-item" href="diagnostics.html">Diagnostics</a>
+        <a class="menu-item active" href="network-firewall.html">Firewall</a>
+    </div>
+    <a href="#" class="menu-item" style="margin-top: auto;">Log out</a>
+</div>
+
+<div class="main-content">
+    <div class="top-header">
+        <div class="header-left"><div class="page-title">Firewall</div></div>
+        <div class="header-right">
+            <div class="time-display" id="liveTime">--:--:--</div>
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color theme">
+                <span id="themeIcon"></span><span id="themeLabel">Dark</span>
+            </button>
+            <div class="status-badge">&#9679; Refreshing</div>
+        </div>
+    </div>
+
+    <div class="page-container">
+        <div class="tabs" style="margin-bottom:20px;"><button class="tab active" data-tabgroup="main" data-name="general" onclick="tabTo('main','general')">General Settings</button><button class="tab" data-tabgroup="main" data-name="fwd" onclick="tabTo('main','fwd')">Port Forwards</button><button class="tab" data-tabgroup="main" data-name="rules" onclick="tabTo('main','rules')">Traffic Rules</button><button class="tab" data-tabgroup="main" data-name="nat" onclick="tabTo('main','nat')">NAT Rules</button><button class="tab" data-tabgroup="main" data-name="ipsets" onclick="tabTo('main','ipsets')">IP Sets</button></div>
+
+        <div class="tab-view active-view" data-panegroup="main" data-name="general"><div class="panel-card dh-intro"><div class="fw-title">Firewall - Zone Settings</div><p>The firewall creates zones over your network interfaces to control network traffic flow.</p></div><div class="panel-card"><div class="panel-title dh-ico">General Settings</div><div class="form-grid-2col"><div class="form-group"><div class="switch-group"><label>Enable SYN-flood protection</label><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div></div><div class="form-group"><div class="switch-group"><label>Drop invalid packets</label><label class="switch"><input type="checkbox"><span class="slider"></span></label></div></div><div class="form-group"><label>Input</label><select><option selected>reject</option><option>drop</option><option>accept</option></select></div><div class="form-group"><label>Output</label><select><option selected>accept</option><option>reject</option><option>drop</option></select></div><div class="form-group"><label>Forward</label><select><option selected>reject</option><option>drop</option><option>accept</option></select></div></div></div><div class="panel-card"><div class="panel-title">Routing/NAT Offloading</div><p class="dh-note">Not fully compatible with QoS/SQM.</p><div class="form-grid-2col"><div class="form-group full-width"><label>Flow offloading type</label><select><option selected>None</option><option>Software</option><option>Hardware</option></select></div></div></div><div class="panel-card"><div class="panel-title dh-ico">Zones<span class="fw-count" id="count-zone"></span><button class="btn btn-primary" onclick="openRec('zone', null)">Add</button></div><div id="tbl-zone"></div></div></div><div class="tab-view" data-panegroup="main" data-name="fwd"><div class="panel-card dh-intro"><div class="fw-title">Firewall - Port Forwards</div><p>Port forwarding allows remote computers on the Internet to connect to a specific computer or service within the private LAN.</p></div><div class="panel-card"><div class="panel-title dh-ico">Port Forwards<span class="fw-count" id="count-fwd"></span><button class="btn btn-primary" onclick="openRec('fwd', null)">Add</button></div><div id="tbl-fwd"></div></div></div><div class="tab-view" data-panegroup="main" data-name="rules"><div class="panel-card dh-intro"><div class="fw-title">Firewall - Traffic Rules</div><p>Traffic rules define policies for packets travelling between different zones, for example to reject traffic between certain hosts or to open WAN ports on the router.</p></div><div class="panel-card"><div class="panel-title dh-ico">Traffic Rules<span class="fw-count" id="count-rule"></span><button class="btn btn-primary" onclick="openRec('rule', null)">Add</button></div><div class="fw-filter form-group" style="margin-bottom:14px;"><input type="text" placeholder="Filter rules&hellip;" oninput="setFilter('rule', this.value)"></div><div id="tbl-rule"></div></div></div><div class="tab-view" data-panegroup="main" data-name="nat"><div class="panel-card dh-intro"><div class="fw-title">Firewall - NAT Rules</div><p>NAT rules allow fine grained control over the source IP to use for outbound or forwarded traffic.</p></div><div class="panel-card"><div class="panel-title dh-ico">NAT Rules<span class="fw-count" id="count-nat"></span><button class="btn btn-primary" onclick="openRec('nat', null)">Add</button></div><div id="tbl-nat"></div></div></div><div class="tab-view" data-panegroup="main" data-name="ipsets"><div class="panel-card dh-intro"><div class="fw-title">Firewall - IP sets</div><p>firewall4 supports referencing and creating IP sets to simplify matching of large address lists without the need to create one rule per item to match. Port ranges in ipsets are unsupported by firewall4.</p><p>Your device runs firewall4.</p></div><div class="panel-card"><div class="panel-title dh-ico">IP Sets<span class="fw-count" id="count-ipset"></span><button class="btn btn-primary" onclick="openRec('ipset', null)">Add</button></div><div id="tbl-ipset"></div></div></div>
+
+        <div class="view-footer-actions"><button class="btn">Reset</button><button class="btn btn-primary">Save &amp; Apply</button></div>
+        <div class="floating-save-bar">
+            <button class="btn btn-primary" style="padding: 6px 12px; font-size:12px;">Save &amp; Apply</button>
+        </div>
+        <div class="page-footer">
+            Powered by LuCI (HEAD detached at 650a6ca3) branch (26.124.63982~650a6ca) &nbsp;|&nbsp; ArgonTheme v2.4.5 &nbsp;|&nbsp; OpenWrt 25.12.3-r32912-6639b15f62
+        </div>
+    </div>
+</div>
+
+<!-- ============ RECORD MODAL ============ -->
+<div class="modal-backdrop" id="rec-modal" aria-hidden="true">
+    <div class="modal-dialog modal-fit" id="rec-dialog" role="dialog" aria-modal="true" aria-labelledby="rec-title">
+        <div class="modal-header solo" id="rec-header">
+            <div>
+                <div class="modal-title" id="rec-title">Edit</div>
+                <div class="modal-subtitle" id="rec-subtitle"></div>
+            </div>
+            <button class="modal-close" type="button" aria-label="Close" onclick="closeRec()">&times;</button>
+        </div>
+        <div class="modal-tabs" id="rec-tabs" style="display:none;"><div class="tabs" id="rec-tabs-inner"></div></div>
+        <div class="modal-body" id="rec-body"></div>
+        <div class="modal-footer">
+            <span class="rec-alert" id="rec-alert" style="display:none;"></span>
+            <button class="btn" onclick="closeRec()">Dismiss</button>
+            <button class="btn" onclick="saveRec()">Save</button>
+            <button class="btn btn-primary" onclick="saveRec()">Save &amp; Apply</button>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    function toggleMenu(menuId) {
+        var subMenu = document.getElementById(menuId);
+        var caret = document.getElementById(menuId.replace('-menu', '-menu-caret'));
+        if (!subMenu || !caret) return;
+        var isOpen = subMenu.classList.toggle('open');
+        caret.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+    function $(id) { return document.getElementById(id); }
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    function tabTo(group, name) {
+        Array.prototype.forEach.call(document.querySelectorAll('[data-tabgroup="' + group + '"]'), function (b) { b.classList.toggle('active', b.getAttribute('data-name') === name); });
+        Array.prototype.forEach.call(document.querySelectorAll('[data-panegroup="' + group + '"]'), function (p) { p.classList.toggle('active-view', p.getAttribute('data-name') === name); });
+    }
+
+    // ---------- data (maps to /etc/config/firewall: zone, redirect, rule, nat, ipset) ----------
+    var NETS = { lan: 'Bridge: "br-lan"', wan: 'Ethernet Adapter: "eth7"', eth0: 'Ethernet Adapter: "eth0"', eth3: 'Ethernet Adapter: "eth3"', eth4: 'Ethernet Adapter: "eth4"', eth5: 'Ethernet Adapter: "eth5"', eth6: 'Ethernet Adapter: "eth6"' };
+    function netLabel(id) { return id + ': ' + NETS[id]; }
+    var PROTOS = ['TCP', 'UDP', 'ICMP', 'IGMP', 'IPSEC-ESP', 'IPSEC-AH', 'SCTP', 'GRE'];
+    var HELPERS = ['any', 'ftp', 'tftp', 'sip', 'irc', 'h323', 'pptp', 'snmp'];
+    var DSCP = ['any', 'CS0', 'CS1', 'CS2', 'CS3', 'CS4', 'CS5', 'CS6', 'CS7', 'AF11', 'AF12', 'AF13', 'AF21', 'AF22', 'AF23', 'AF31', 'AF32', 'AF33', 'AF41', 'AF42', 'AF43', 'EF'];
+    var LIMITS = ['unlimited', '10/second', '10/minute', '10/hour', '10/day'];
+    var MONTHDAYS = (function () { var a = []; for (var n = 1; n <= 31; n++) a.push(String(n)); return a; })();
+    function ipsetNames() { return ['unspecified'].concat(DATA.ipset.map(function (x) { return x.name; })); }
+    function zoneOpts() { return DATA.zone.map(function (z) { return { v: z.name, l: z.name + ' \u00b7 ' + (z.nets.length ? z.nets.map(netLabel).join(', ') : '(empty)') }; }); }
+
+    function Z(name, nets, dests, inp, out, fwd, masq) { return { name: name, nets: nets, dests: dests, input: inp, output: out, forward: fwd, masq: !!masq }; }
+    var DATA = {
+        zone: [
+            Z('lan', ['lan'], ['wan'], 'accept', 'accept', 'accept', false),
+            Z('wan', ['wan'], ['lan'], 'accept', 'accept', 'accept', true),
+            Z('Tunnel', ['eth0'], ['Restricted_zone'], 'reject', 'accept', 'reject', false),
+            Z('DMZ', ['eth5'], ['lan'], 'reject', 'accept', 'reject', false),
+            Z('Restricted_zone', ['eth6'], ['DMZ'], 'reject', 'accept', 'reject', false),
+            Z('Sandbox', ['eth5', 'eth6'], ['DMZ', 'Restricted_zone'], 'accept', 'accept', 'accept', false),
+            Z('Trusted_zone', ['eth4'], ['Tunnel'], 'accept', 'reject', 'reject', false),
+            Z('Test_zone', ['eth3'], [], 'reject', 'accept', 'reject', false),
+            Z('NSL_test', [], [], 'reject', 'accept', 'reject', false)
+        ],
+        fwd: [
+            { name: 'WAN to LAN', family: 'IPv4', proto: ['TCP'], src: 'wan', extport: '5553', destzone: 'lan', destip: '192.168.1.1', destport: '443', enabled: true }
+        ],
+        rule: [],
+        nat: [
+            { name: 'Restict the GUI', family: 'IPv4', proto: ['TCP'], src: 'any zone', srcip: '31.1.1.3', dest: 'wan', destip: '31.1.1.1', destport: '443', snat: '31.1.1.1', enabled: true },
+            { name: 'Re Route', family: 'IPv4', proto: [], src: 'any zone', srcip: '31.1.1.100', dest: 'wan', destip: '31.1.1.1', destport: '', snat: '192.168.1.1', enabled: true }
+        ],
+        ipset: [
+            { name: 'List-of-block-ip', family: 'IPv4', match: ['src_ip'], ips: ['31.1.1.2', '91.1.3.1', '91.1.1.2', '91.1.4.1', '91.1.2.1'], include: '', enabled: true },
+            { name: 'Allowed-list-ip', family: 'IPv4', match: ['ip'], ips: ['31.1.1.3'], include: '', enabled: true },
+            { name: 'CPM', family: 'IPv4', match: ['src_ip'], ips: ['31.1.1.100'], include: '', enabled: true },
+            { name: 'sdfasdf', family: 'IPv4', match: ['ip'], ips: ['92.1.1.1'], include: '', enabled: true }
+        ]
+    };
+
+    // traffic rules
+    function R(name, family, proto, src, srcip, dest, destip, destport, action, o) {
+        var r = { name: name, family: family, proto: (proto && proto !== 'any') ? [proto] : [], src: src, srcip: srcip ? [srcip] : [], dest: dest, destip: destip ? [destip] : [],
+                  destport: destport || '', action: action, icmp: '', limit: '', enabled: true, dev: '', ipset: '', srcmac: [], srcport: '', helper: 'any', mark: '', dscp: 'any',
+                  log: false, weekdays: [], monthdays: [], startTime: '', stopTime: '', startDate: '', stopDate: '', utc: false };
+        if (o) for (var k in o) r[k] = o[k];
+        return r;
+    }
+    var ICMP6 = 'echo-request, echo-reply, destination-unreachable, packet-too-big, time-exceeded, bad-header, unknown-header-type';
+    DATA.rule = [
+        R('Allow-DHCP-Renew', 'IPv4', 'UDP', 'wan', '', 'this device', '', '68', 'accept'),
+        R('Allow-Trusted', 'IPv4 and IPv6', 'any', 'wan', '', 'this device', '', '', 'accept'),
+        R('Allow-Ping', 'IPv4', 'ICMP', 'wan', '', 'this device', '', '', 'accept', { icmp: 'echo-request' }),
+        R('Allow-IGMP', 'IPv4', 'IGMP', 'wan', '', 'this device', '', '', 'accept'),
+        R('Allow-DHCPv6', 'IPv6', 'UDP', 'wan', '', 'this device', '', '546', 'accept'),
+        R('CPM & PC-U', 'IPv4 and IPv6', 'TCP', 'wan', '', 'this device', '', '443', 'accept'),
+        R('Block list of other IP', 'IPv4 and IPv6', 'any', 'wan', '', 'this device', '', '', 'drop'),
+        R('CPM', 'IPv4 and IPv6', 'any', 'wan', '', 'this device', '', '', 'accept'),
+        R('Allow-MLD', 'IPv6', 'ICMP', 'wan', 'fe80::/10', 'this device', '', '', 'accept', { icmp: '130/0, 131/0, 132/0, 143/0' }),
+        R('Allow-ICMPv6-Input', 'IPv6', 'ICMP', 'wan', '', 'this device', '', '', 'accept', { icmp: 'echo-request, echo-reply, destination-unreachable, packet-too-big, time-exceeded, bad-header, unknown-header-type, router-solicitation, neighbour-solicitation, router-advertisement, neighbour-advertisement', limit: '1000/second' }),
+        R('Allow-ICMPv6-Forward', 'IPv6', 'ICMP', 'wan', '', 'any zone', '', '', 'accept', { icmp: ICMP6, limit: '1000/second' }),
+        R('Allow-IPSec-ESP', 'IPv4 and IPv6', 'IPSEC-ESP', 'wan', '', 'lan', '', '', 'accept'),
+        R('Allow-ISAKMP', 'IPv4 and IPv6', 'UDP', 'wan', '', 'lan', '', '500', 'accept'),
+        R('Allow-LuCI-WAN', 'IPv4 and IPv6', 'TCP', 'wan', '', 'this device', '31.1.1.1', '443', 'accept'),
+        R('Reject-ssh', 'IPv4 and IPv6', 'TCP', 'wan', '', 'this device', '', '22', 'accept')
+    ];
+    (function () {
+        var BASE = { Tunnel: '9.1.2.', DMZ: '91.1.1.', LAN6: '91.1.3.' };
+        var PAT = [['Tunnel', 'DMZ', 'ACC'], ['DMZ', 'Tunnel', 'REJ'], ['Tunnel', 'LAN6', 'ACC'], ['LAN6', 'Tunnel', 'REJ'], ['DMZ', 'LAN6', 'ACC'], ['LAN6', 'DMZ', 'REJ']];
+        for (var n = 1; n <= 100; n++) {
+            if (n === 25 || n === 55) continue;   // not present on the device
+            var g = Math.floor((n - 1) / 6), p = PAT[(n - 1) % 6];
+            var so = 32 * (g % 8), dof = 32 * ((g + 1) % 8);
+            DATA.rule.push(R('seg-' + ('00' + n).slice(-3) + '-' + p[0] + '-' + p[1] + '-' + p[2], 'IPv4', 'any', p[0], BASE[p[0]] + so + '/27', p[1], BASE[p[1]] + dof + '/27', '', p[2] === 'ACC' ? 'accept' : 'reject'));
+        }
+    })();
+
+    // ---------- how each record is described in the table ----------
+    function zoneNames() { return DATA.zone.map(function (z) { return z.name; }); }
+
+    function protoText(p) { return p && p.length ? ', protocol ' + p.join(', ') : ''; }
+    function fmtLimit(l) { var m = /^(\d+)\/(second|minute|hour|day)$/.exec(l); return m ? m[1] + ' packets per ' + m[2] : l; }
+    function ruleLines(r) {
+        var incoming = r.dest === 'this device';
+        var l = [(incoming ? 'Incoming ' : 'Forwarded ') + r.family + protoText(r.proto)];
+        if (r.proto.indexOf('ICMP') >= 0 && r.icmp) l.push('ICMP with types ' + r.icmp);
+        l.push('From ' + r.src + (r.srcip.length ? ', IP ' + r.srcip.join(', ') : ''));
+        l.push('To ' + r.dest + (r.destip.length ? ', IP ' + r.destip.join(', ') : '') + (r.destport ? ', port ' + r.destport : ''));
+        if (r.limit && r.limit !== 'unlimited') l.push('Limit matching to ' + fmtLimit(r.limit));
+        return l;
+    }
+    function ruleAction(r) { return cap(r.action) + ' ' + (r.dest === 'this device' ? 'input' : 'forward'); }
+    function fwdLines(r) {
+        var fam = r.family === 'automatic' ? ((r.destip || '').indexOf(':') >= 0 ? 'IPv6' : 'IPv4') : r.family;
+        return ['Incoming ' + fam + protoText(r.proto), 'From ' + r.src, 'To this device' + (r.extport ? ', port ' + r.extport : '')];
+    }
+    function fwdAction(r) { return 'Forward to ' + r.destzone + ' IP ' + r.destip + ' port ' + r.destport; }
+    function natLines(r) {
+        var fam = (!r.family || r.family === 'automatic') ? 'IPv4' : r.family;
+        return ['Forwarded ' + fam + protoText(r.proto || []), 'From ' + (r.src || 'any zone') + (r.srcip ? ', IP ' + r.srcip : ''),
+                'To ' + r.dest + (r.destip ? ', IP ' + r.destip : '') + (r.destport ? ', port ' + r.destport : '')];
+    }
+    function natAction(r) {
+        var a = r.action || NAT_ACTIONS[0];
+        if (a.indexOf('MASQUERADE') === 0) return 'Dynamically rewrite to outbound interface IP';
+        if (a.indexOf('ACCEPT') === 0) return 'Disable address rewriting';
+        return 'Statically rewrite to source IP ' + (r.snat || '');
+    }
+
+    function linesHtml(l) { return '<div class="fw-lines">' + l.map(function (x) { return '<div>' + esc(x) + '</div>'; }).join('') + '</div>'; }
+    function nameCell(r) { return '<span class="fw-name">' + esc(r.name) + '</span>'; }
+    function enableBox(name) {
+        return function (r, i) { return '<input type="checkbox" class="row-check" aria-label="Enable"' + (r.enabled ? ' checked' : '') + ' onchange="DATA.' + name + '[' + i + '].enabled = this.checked">'; };
+    }
+    function enableCell(name) {
+        return function (r, i) { return '<label class="switch"><input type="checkbox"' + (r.enabled ? ' checked' : '') + ' onchange="DATA.' + name + '[' + i + '].enabled = this.checked"><span class="slider"></span></label>'; };
+    }
+
+    function zoneBlock(name) {
+        var z = null;
+        DATA.zone.forEach(function (x) { if (x.name === name) z = x; });
+        var nets = z && z.nets.length ? z.nets.map(netLabel).map(esc).join('<br>') : '(empty)';
+        return '<div class="zone-block zone-cell"><span class="zone-chip">' + esc(name) + '</span><span class="zone-nets">' + nets + '</span></div>';
+    }
+    function zoneCell(z) {
+        var out = zoneBlock(z.name) + '<div class="zone-arrow">\u21D2</div>';
+        if (z.dests.length) out += z.dests.map(zoneBlock).join('') + '<div class="zone-rej">REJECT all others</div>';
+        else out += '<div class="zone-rej">REJECT</div>';
+        return out;
+    }
+    function pol(k) { return function (r) { return '<span class="pol">' + esc(r[k]) + '</span>'; }; }
+
+    var TIME_TAB = { key: 'time', label: 'Time Restrictions', fields: [
+        { k: 'weekdays', label: 'Week Days', type: 'multi', opts: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], ph: 'Any day' },
+        { k: 'monthdays', label: 'Month Days', type: 'multi', opts: MONTHDAYS, ph: 'Any day' },
+        { k: 'startTime', label: 'Start Time (hh:mm:ss)', type: 'text', ph: '00:00:00' },
+        { k: 'stopTime', label: 'Stop Time (hh:mm:ss)', type: 'text', ph: '23:59:59' },
+        { k: 'startDate', label: 'Start Date (yyyy-mm-dd)', type: 'text', ph: 'yyyy-mm-dd' },
+        { k: 'stopDate', label: 'Stop Date (yyyy-mm-dd)', type: 'text', ph: 'yyyy-mm-dd' },
+        { k: 'utc', label: 'Time in UTC', type: 'toggle' }
+    ] };
+    var MATCH_FIELDS = ['ip', 'port', 'mac', 'net', 'src_ip', 'src_port', 'src_mac', 'src_net', 'dest_ip', 'dest_port', 'dest_mac', 'dest_net'];
+    var NAT_ACTIONS = ['SNAT - Rewrite to specific source IP or port', 'MASQUERADE - Automatically rewrite to outbound interface IP', 'ACCEPT - Disable address rewriting'];
+
+    var SCHEMAS = {
+        zone: {
+            title: 'Firewall - Zone Settings', add: 'zone',
+            cols: [{ label: 'Zone \u21D2 Forwards', render: zoneCell }, { label: 'Input', render: pol('input') }, { label: 'Output', render: pol('output') },
+                   { label: 'Intra zone forward', render: pol('forward') }, { label: 'IPv4 Masquerading', render: function (z) { return z.masq ? '<span class="fw-check">\u2713</span>' : '-'; } }],
+            fields: [
+                { k: 'name', label: 'Name', type: 'text', full: true, ph: 'e.g. guest' },
+                { k: 'input', label: 'Input', type: 'select', opts: ['accept', 'reject', 'drop'] },
+                { k: 'output', label: 'Output', type: 'select', opts: ['accept', 'reject', 'drop'] },
+                { k: 'forward', label: 'Intra zone forward', type: 'select', opts: ['accept', 'reject', 'drop'] },
+                { k: 'masq', label: 'IPv4 Masquerading', type: 'toggle', hint: 'Enable network address and port translation IPv4 (NAT4 or NAPT4) for outbound traffic on this zone.' },
+                { k: 'nets', label: 'Covered networks', type: 'multi', full: true, opts: function () { return Object.keys(NETS).map(function (id) { return { v: id, l: netLabel(id) }; }); }, hint: 'Specifies the interfaces attached to this zone.' },
+                { k: 'dests', label: 'Allow forward to destination zones', type: 'multi', full: true, opts: zoneNames, hint: 'Traffic from this zone may be forwarded to the selected zones.' }
+            ]
+        },
+        fwd: {
+            title: 'Firewall - Port Forwards', add: 'port forward', unnamed: 'Unnamed forward',
+            cols: [{ label: 'Name', render: nameCell }, { label: 'Match', render: function (r) { return linesHtml(fwdLines(r)); } }, { label: 'Action', render: fwdAction }, { label: 'Enable', render: enableCell('fwd') }],
+            tabs: [
+                { key: 'general', label: 'General Settings', fields: [
+                    { k: 'name', label: 'Name', type: 'text', full: true, ph: 'Unnamed forward' },
+                    { k: 'family', label: 'Restrict to address family', type: 'select', opts: ['automatic', 'IPv4 and IPv6', 'IPv4', 'IPv6'] },
+                    { k: 'proto', label: 'Protocol', type: 'multi', opts: PROTOS, dflt: ['TCP', 'UDP'] },
+                    { k: 'src', label: 'Source zone', type: 'select', opts: zoneNames, dflt: 'wan' },
+                    { k: 'extport', label: 'External port', type: 'text', ph: 'e.g. 8080 or 8000-8100', hint: 'Match incoming traffic directed at the given destination port or port range on this host' },
+                    { k: 'destzone', label: 'Destination zone', type: 'select', opts: zoneNames, dflt: 'lan' },
+                    { k: 'destip', label: 'Internal IP address', type: 'text', ph: 'any', hint: 'Redirect matched incoming traffic to the specified internal host' },
+                    { k: 'destport', label: 'Internal port', type: 'text', full: true, ph: 'any', hint: 'Redirect matched incoming traffic to the given port on the internal host' },
+                    { k: 'enabled', label: 'Enable', type: 'toggle', dflt: true }
+                ] },
+                { key: 'advanced', label: 'Advanced Settings', fields: [
+                    { k: 'ipset', label: 'Use ipset', type: 'select', opts: ipsetNames },
+                    { k: 'srcmac', label: 'Source MAC address', type: 'list', ph: '-- add MAC --', hint: 'Only match incoming traffic from these MACs.' },
+                    { k: 'srcips', label: 'Source IP address', type: 'list', ph: 'any', hint: 'Only match incoming traffic from this IP or range.' },
+                    { k: 'srcport', label: 'Source port', type: 'text', ph: 'any', hint: 'Only match incoming traffic originating from the given source port or port range on the client host' },
+                    { k: 'extip', label: 'External IP address', type: 'text', ph: 'any', hint: 'Only match incoming traffic directed at the given IP address.' },
+                    { k: 'loopback', label: 'Enable NAT Loopback', type: 'toggle', dflt: true },
+                    { k: 'loopsrc', label: 'Loopback source IP', type: 'select', opts: ['Use internal IP address', 'Use external IP address'], hint: 'Specifies whether to use the external or the internal IP address for reflected traffic.' },
+                    { k: 'reflect', label: 'Reflection zones', type: 'multi', full: true, opts: zoneOpts, hint: 'Zones from which reflection rules shall be created. If unset, only the destination zone is used.' },
+                    { k: 'helper', label: 'Match helper', type: 'select', opts: HELPERS, hint: 'Match traffic using the specified connection tracking helper.' },
+                    { k: 'mark', label: 'Match mark', type: 'text', hint: 'Matches a specific firewall mark or a range of different marks.' },
+                    { k: 'limit', label: 'Limit matching', type: 'combo', dl: LIMITS, ph: 'unlimited', hint: 'Limits traffic matching to the specified rate.' },
+                    { k: 'log', label: 'Enable logging', type: 'toggle', hint: 'Log matched packets to syslog.' }
+                ] }
+            ]
+        },
+        rule: {
+            title: 'Firewall - Traffic Rules', add: 'rule', unnamed: 'Unnamed rule', filter: true, clone: true,
+            cols: [{ label: 'Name', render: nameCell }, { label: 'Match', render: function (r) { return linesHtml(ruleLines(r)); } }, { label: 'Action', render: ruleAction }, { label: 'Enable', render: enableCell('rule') }],
+            search: function (r) { return (r.name + ' ' + ruleLines(r).join(' ') + ' ' + ruleAction(r)).toLowerCase(); },
+            tabs: [
+                { key: 'general', label: 'General Settings', fields: [
+                    { k: 'name', label: 'Name', type: 'text', full: true, ph: 'Unnamed rule' },
+                    { k: 'proto', label: 'Protocol', type: 'multi', opts: PROTOS, dflt: ['TCP', 'UDP'] },
+                    { k: 'icmp', label: 'ICMP types', type: 'text', ph: 'only for ICMP, e.g. echo-request' },
+                    { k: 'src', label: 'Source zone', type: 'select', opts: function () { return ['any zone'].concat(zoneNames()); }, dflt: 'wan' },
+                    { k: 'srcip', label: 'Source address', type: 'list', ph: '-- add IP --' },
+                    { k: 'srcport', label: 'Source port', type: 'text', full: true, ph: 'any' },
+                    { k: 'dest', label: 'Destination zone', type: 'select', opts: function () { return ['this device', 'any zone'].concat(zoneNames()); }, dflt: 'lan' },
+                    { k: 'destip', label: 'Destination address', type: 'list', ph: '-- add IP --' },
+                    { k: 'destport', label: 'Destination port', type: 'text', ph: 'any' },
+                    { k: 'action', label: 'Action', type: 'select', opts: ['accept', 'drop', 'reject', "don't track"], dflt: 'accept' },
+                    { k: 'enabled', label: 'Enable', type: 'toggle', dflt: true }
+                ] },
+                { key: 'advanced', label: 'Advanced Settings', fields: [
+                    { k: 'dev', label: 'Match device', type: 'select', opts: function () { return ['unspecified'].concat(DEVS.map(function (d) { return d[0]; })); } },
+                    { k: 'family', label: 'Restrict to address family', type: 'select', opts: ['IPv4 and IPv6', 'IPv4', 'IPv6'] },
+                    { k: 'ipset', label: 'Use ipset', type: 'select', opts: ipsetNames },
+                    { k: 'srcmac', label: 'Source MAC address', type: 'list', ph: '-- add MAC --' },
+                    { k: 'helper', label: 'Match helper', type: 'select', opts: HELPERS, hint: 'Match traffic using the specified connection tracking helper.' },
+                    { k: 'mark', label: 'Match mark', type: 'text', hint: 'Matches a specific firewall mark or a range of different marks.' },
+                    { k: 'dscp', label: 'Match DSCP', type: 'select', opts: DSCP, hint: 'Matches traffic carrying the specified DSCP marking.' },
+                    { k: 'limit', label: 'Limit matching', type: 'combo', dl: LIMITS, ph: 'unlimited', hint: 'Limits traffic matching to the specified rate.' },
+                    { k: 'log', label: 'Enable logging', type: 'toggle', hint: 'Log matched packets to syslog.' }
+                ] },
+                TIME_TAB
+            ]
+        },
+        nat: {
+            title: 'Firewall - NAT Rules', add: 'NAT rule', unnamed: 'Unnamed NAT',
+            cols: [{ label: 'Name', render: nameCell }, { label: 'Match', render: function (r) { return linesHtml(natLines(r)); } }, { label: 'Action', render: natAction }, { label: 'Enable', render: enableCell('nat') }],
+            tabs: [
+                { key: 'general', label: 'General Settings', fields: [
+                    { k: 'name', label: 'Name', type: 'text', full: true, ph: 'Unnamed NAT' },
+                    { k: 'family', label: 'Restrict to address family', type: 'select', opts: ['automatic', 'IPv4 and IPv6', 'IPv4', 'IPv6'] },
+                    { k: 'proto', label: 'Protocol', type: 'multi', opts: PROTOS, ph: 'Any' },
+                    { k: 'dest', label: 'Outbound zone', type: 'select', opts: zoneNames, dflt: 'lan', full: true },
+                    { k: 'srcip', label: 'Source address', type: 'text', ph: 'any', hint: 'Match forwarded traffic from this IP or range.' },
+                    { k: 'destip', label: 'Destination address', type: 'text', ph: 'any', hint: 'Match forwarded traffic directed at the given IP address.' },
+                    { k: 'action', label: 'Action', type: 'select', opts: NAT_ACTIONS, full: true },
+                    { k: 'snat', label: 'Rewrite IP address', type: 'combo', dl: ['31.1.1.1', '192.168.1.1'], ph: 'unspecified', full: true, hint: 'Rewrite matched traffic to the specified source IP address.' }
+                ] },
+                { key: 'advanced', label: 'Advanced Settings', fields: [
+                    { k: 'dev', label: 'Outbound device', type: 'select', opts: function () { return ['unspecified'].concat(DEVS.map(function (d) { return d[0]; })); }, hint: 'Matches forwarded traffic using the specified outbound network device.' },
+                    { k: 'mark', label: 'Match mark', type: 'text', hint: 'Matches a specific firewall mark or a range of different marks.' },
+                    { k: 'limit', label: 'Limit matching', type: 'combo', dl: LIMITS, ph: 'unlimited', hint: 'Limits traffic matching to the specified rate.' },
+                    { k: 'log', label: 'Enable logging', type: 'toggle', hint: 'Log matched packets to syslog.' }
+                ] },
+                TIME_TAB
+            ]
+        },
+        ipset: {
+            title: 'Firewall - IP sets', add: 'IP set', unnamed: 'Unnamed set',
+            cols: [{ label: 'Name', render: nameCell }, { label: 'Family', render: function (r) { return esc(String(r.family).toLowerCase()); } },
+                   { label: 'Packet Field Match', render: function (r) { return '<span class="mono">' + esc([].concat(r.match || []).join(' ')) + '</span>'; } },
+                   { label: 'IPs/Networks/MACs', render: function (r) { return '<span class="mono">' + (r.ips.length ? r.ips.map(esc).join(' ') : '-') + '</span>'; } },
+                   { label: 'Include File', render: function (r) { return esc(r.include || 'none'); } }, { label: 'Enabled', render: enableCell('ipset') }],
+            fields: [
+                { k: 'name', label: 'Name', type: 'text', full: true, ph: 'Unnamed set' },
+                { k: 'comment', label: 'Comment', type: 'text', full: true, ph: 'Comment' },
+                { k: 'family', label: 'Family', type: 'select', opts: ['IPv4', 'IPv6'], full: true },
+                { k: 'match', label: 'Packet Field Match', type: 'multi', opts: MATCH_FIELDS, ph: '-- Please choose --', full: true,
+                  hint: 'Packet fields to match upon.<br>Syntax: <code>direction_datatype</code>. e.g.: <code>src_port</code>, <code>dest_net</code>.<br>Directions: <code>src</code>, <code>dst</code>. Datatypes: <code>ip</code>, <code>port</code>, <code>mac</code>, <code>net</code>, <code>set</code>.<br>Direction prefixes are optional.<br>*Note: datatype <code>set</code> is unsupported in fw4.' },
+                { k: 'ips', label: 'IPs/Networks/MACs', type: 'list', full: true, ph: 'macaddr|ip[/cidr]' },
+                { k: 'maxel', label: 'Max Entries', type: 'text', ph: 'up to 65536 entries.' },
+                { k: 'include', label: 'Include File', type: 'text', ph: 'Path to file of CIDRs, subnets, host IPs, etc.' },
+                { k: 'timeout', label: 'Timeout', type: 'text', dflt: '0', hint: 'Unit: seconds. Default <code>0</code> means the entry is added permanently to the set.<br>Max: <code>2147483</code> seconds.' },
+                { k: 'counters', label: 'Counters', type: 'toggle', hint: 'Enables packet and byte count tracking for the set.' }
+            ],
+            validate: function (v) { return (v.name && v.match.length) ? '' : '\u25B2 Expecting: non-empty value'; }
+        }
+    };
+
+    // Fixed column widths so long Match text wraps instead of widening the table ('' = takes the remaining space)
+    SCHEMAS.zone.widths  = ['', '90px', '90px', '130px', '150px', '170px'];
+    SCHEMAS.fwd.widths   = ['20%', '', '260px', '84px', '170px'];
+    SCHEMAS.rule.widths  = ['19%', '', '140px', '84px', '250px'];
+    SCHEMAS.nat.widths   = ['18%', '', '260px', '84px', '170px'];
+    SCHEMAS.ipset.widths = ['16%', '90px', '120px', '', '130px', '90px', '170px'];
+
+    // ---------- tables ----------
+    var FILTER = {};
+    function renderTable(name) {
+        var sc = SCHEMAS[name], list = DATA[name], q = (FILTER[name] || '').toLowerCase();
+        var head = sc.cols.map(function (c) { return '<th' + (c.cls ? ' class="' + c.cls + '"' : '') + '>' + c.label + '</th>'; }).join('') + '<th style="text-align:right;">Actions</th>';
+        var shown = 0;
+        var rows = list.map(function (rec, i) {
+            if (q && sc.search && sc.search(rec).indexOf(q) < 0) return '';
+            shown++;
+            return '<tr>' + sc.cols.map(function (c) { return '<td' + (c.cls ? ' class="' + c.cls + '"' : '') + '>' + c.render(rec, i) + '</td>'; }).join('') +
+                '<td style="text-align:right;"><div class="dev-actions">' +
+                    '<button class="btn" onclick="openRec(\'' + name + '\',' + i + ')">Edit</button>' +
+                    (sc.clone ? '<button class="btn" onclick="cloneRec(\'' + name + '\',' + i + ')">Clone</button>' : '') +
+                    '<button class="btn btn-danger-outline" onclick="delRec(\'' + name + '\',' + i + ')">Delete</button>' +
+                '</div></td></tr>';
+        }).join('');
+        if (!shown) rows = '<tr class="dev-empty-row"><td colspan="' + (sc.cols.length + 1) + '">' + (list.length ? 'No entries match the filter' : 'This section contains no values yet') + '</td></tr>';
+        var cg = sc.widths ? '<colgroup>' + sc.widths.map(function (w) { return '<col' + (w ? ' style="width:' + w + '"' : '') + '>'; }).join('') + '</colgroup>' : '';
+        $('tbl-' + name).innerHTML = '<div class="table-scroll"><table class="data-table"' + (sc.widths ? ' style="table-layout:fixed; width:100%;"' : '') + '>' + cg + '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+        $('count-' + name).textContent = list.length ? (q ? shown + ' of ' + list.length : list.length) + (list.length === 1 ? ' entry' : ' entries') : '';
+    }
+    function renderAll() { Object.keys(SCHEMAS).forEach(renderTable); }
+    function setFilter(name, v) { FILTER[name] = v; renderTable(name); }
+    function cloneRec(name, i) {
+        var copy = JSON.parse(JSON.stringify(DATA[name][i]));
+        copy.name = (copy.name || 'Unnamed') + ' (copy)';
+        DATA[name].splice(i + 1, 0, copy);
+        renderTable(name);
+    }
+    function delRec(name, i) {
+        if (!confirm('Delete this entry?')) return;
+        DATA[name].splice(i, 1);
+        renderTable(name);
+        if (name === 'zone') renderTable('zone');
+    }
+
+    // ---------- record modal ----------
+    var recName = null, recIdx = null, recLast = null;
+
+    function listRow(ph, v) {
+        return '<div class="dyn-row"><input type="text" value="' + esc(v) + '" placeholder="' + esc(ph || '') + '">' +
+               '<button class="btn" type="button" onclick="removeListRow(this)" aria-label="Remove">&times;</button></div>';
+    }
+    function addStaticRow(btn) {
+        var list = btn.previousElementSibling;
+        list.insertAdjacentHTML('beforeend', listRow(list.getAttribute('data-ph'), ''));
+    }
+    function removeListRow(btn) {
+        var row = btn.parentNode, list = row.parentNode;
+        if (list.children.length > 1) list.removeChild(row); else row.querySelector('input').value = '';
+    }
+
+    function fieldHtml(f, d) {
+        var id = 'f-' + f.k, v = d[f.k], h = f.hint ? '<div class="field-hint">' + f.hint + '</div>' : '', cls = 'form-group' + (f.full ? ' full-width' : ''), control;
+        if (f.type === 'toggle') {
+            var on = (v === undefined) ? !!f.dflt : v;
+            return '<div class="' + cls + '"><div class="switch-group"><label>' + f.label + '</label><label class="switch"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><span class="slider"></span></label></div>' + h + '</div>';
+        }
+        if (f.type === 'select') {
+            var opts = typeof f.opts === 'function' ? f.opts() : f.opts;
+            var cur = v || f.dflt || opts[0];
+            control = '<select id="' + id + '">' + opts.map(function (o) { return '<option' + (o === cur ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
+        } else if (f.type === 'multi') {
+            var mo = (typeof f.opts === 'function' ? f.opts() : f.opts).map(function (o) { return typeof o === 'string' ? { v: o, l: o } : o; });
+            control = zmulti(id, mo, v === undefined ? (f.dflt || []) : v, f.ph);
+        } else if (f.type === 'combo') {
+            control = '<input type="text" id="' + id + '" value="' + esc(v || '') + '" placeholder="' + esc(f.ph || '') + '" list="dl-' + f.k + '"><datalist id="dl-' + f.k + '">' +
+                      f.dl.map(function (o) { return '<option value="' + esc(o) + '">'; }).join('') + '</datalist>';
+        } else if (f.type === 'list') {
+            var vals = (v && v.length) ? v : [''];
+            control = '<div class="dyn-list" id="' + id + '" data-ph="' + esc(f.ph || '') + '">' + vals.map(function (x) { return listRow(f.ph, x); }).join('') + '</div>' +
+                      '<button class="btn" type="button" onclick="addStaticRow(this)" style="align-self:flex-start; margin-top:8px;">Add entry</button>';
+        } else {
+            control = '<input type="text" id="' + id + '" value="' + esc(v === undefined ? (f.dflt || '') : v) + '" placeholder="' + esc(f.ph || '') + '">';
+        }
+        return '<div class="' + cls + '"><label>' + f.label + '</label>' + control + h + '</div>';
+    }
+
+    var ZONE_TABS = [['general', 'General Settings'], ['advanced', 'Advanced Settings'], ['conntrack', 'Conntrack Settings']];
+    function setRecTabs(defs) {
+        $('rec-tabs-inner').innerHTML = defs.map(function (t, n) {
+            return '<button class="tab' + (n === 0 ? ' active' : '') + '" data-tabgroup="zone" data-name="' + t[0] + '" onclick="tabTo(\'zone\',\'' + t[0] + '\')">' + t[1] + '</button>';
+        }).join('');
+    }
+    function tabbedBody(sc, d) {
+        return sc.tabs.map(function (t, n) {
+            return zpane(t.key, '<div class="panel-card"><div class="panel-title">' + t.label + '</div><div class="form-grid-2col">' + t.fields.map(function (f) { return fieldHtml(f, d); }).join('') + '</div></div>', n === 0);
+        }).join('');
+    }
+
+    function openRec(name, idx) {
+        var sc = SCHEMAS[name], d = (idx === null) ? {} : DATA[name][idx];
+        recName = name; recIdx = idx;
+        var isZone = (name === 'zone'), tabbed = isZone || !!sc.tabs;
+        var tabDefs = isZone ? ZONE_TABS : (sc.tabs ? sc.tabs.map(function (t) { return [t.key, t.label]; }) : []);
+        setRecTabs(tabDefs);
+        $('rec-tabs').style.display = tabbed ? '' : 'none';
+        $('rec-header').classList.toggle('solo', !tabbed);
+        $('rec-dialog').classList.toggle('modal-wide', tabbed);
+        $('rec-alert').style.display = 'none';
+        $('rec-title').textContent = sc.unnamed ? sc.title + ' - ' + (d.name || sc.unnamed) : sc.title;
+        $('rec-subtitle').textContent = isZone ? (idx === null ? 'New zone' : 'Editing zone "' + d.name + '"')
+            : (idx === null ? 'New ' + sc.add : (sc.tabs ? 'Editing "' + (d.name || '') + '"' : 'Editing an existing entry'));
+        $('rec-body').innerHTML = isZone ? zoneBody(zdef(d), idx === null)
+            : sc.tabs ? tabbedBody(sc, d)
+            : '<div class="panel-card"><div class="form-grid-2col">' + sc.fields.map(function (f) { return fieldHtml(f, d); }).join('') + '</div></div>';
+        if (tabbed) tabTo('zone', tabDefs[0][0]);
+        $('rec-body').scrollTop = 0;
+        recLast = document.activeElement;
+        var m = $('rec-modal');
+        m.classList.add('open');
+        m.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        m.querySelector('.modal-close').focus();
+    }
+    function closeRec() {
+        var m = $('rec-modal');
+        m.classList.remove('open');
+        m.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        if (recLast && recLast.focus) recLast.focus();
+    }
+    function allFields(sc) {
+        if (!sc.tabs) return sc.fields;
+        return sc.tabs.reduce(function (acc, t) { return acc.concat(t.fields); }, []);
+    }
+    function collect(sc) {
+        var out = {};
+        allFields(sc).forEach(function (f) {
+            var el = $('f-' + f.k);
+            if (f.type === 'toggle') out[f.k] = el.checked;
+            else if (f.type === 'multi') out[f.k] = Array.prototype.filter.call(el.querySelectorAll('input'), function (i) { return i.checked; }).map(function (i) { return i.value; });
+            else if (f.type === 'list') out[f.k] = Array.prototype.map.call(el.querySelectorAll('input'), function (i) { return i.value.trim(); }).filter(Boolean);
+            else { var val = el.value.trim(); out[f.k] = (val === 'unspecified') ? '' : val; }
+        });
+        return out;
+    }
+    // Mockup behaviour: entries live in memory. Wire to uci (firewall) later.
+    function saveRec() {
+        if (recName === 'zone') { saveZone(); return; }
+        var sc = SCHEMAS[recName], v = collect(sc);
+        if (sc.validate) {
+            var msg = sc.validate(v);
+            if (msg) { var al = $('rec-alert'); al.textContent = msg; al.style.display = 'inline-block'; return; }
+        }
+        if (recIdx === null && v.enabled === undefined && sc.cols.some(function (c) { return /^Enable/.test(c.label); })) v.enabled = true;
+        if (recName === 'zone') { v.masq = !!v.masq; }
+        if (recIdx === null) DATA[recName].push(v);
+        else {
+            var old = DATA[recName][recIdx];
+            if (recName === 'zone' && old.name !== v.name) {   // keep other zones' forward targets in sync on rename
+                DATA.zone.forEach(function (z) { z.dests = z.dests.map(function (n) { return n === old.name ? v.name : n; }); });
+            }
+            for (var kk in old) if (!(kk in v)) v[kk] = old[kk];
+            DATA[recName][recIdx] = v;
+        }
+        renderAll();
+        closeRec();
+    }
+    // ---------- zone popup: General / Advanced / Conntrack ----------
+    var DEVS = [['br-lan', 'Bridge'], ['eth0', 'Ethernet Adapter'], ['eth1', 'Ethernet Adapter'], ['eth2', 'Ethernet Adapter'], ['eth3', 'Ethernet Adapter'],
+                ['eth4', 'Ethernet Adapter'], ['eth5', 'Ethernet Adapter'], ['eth6', 'Ethernet Adapter'], ['eth7', 'Ethernet Adapter']];
+
+    function zdef(z) {
+        var d = { name: '', nets: [], dests: [], input: 'reject', output: 'accept', forward: 'reject', masq: false, mss: false,
+                  devices: [], subnets: [], masq6: false, family: 'IPv4 and IPv6', masqSrc: ['0.0.0.0/0'], masqDst: ['0.0.0.0/0'], log: [], invalid: false, helper: true };
+        for (var k in z) if (Object.prototype.hasOwnProperty.call(z, k)) d[k] = z[k];
+        return d;
+    }
+    function zf(label, control, hint, full) {
+        return '<div class="form-group' + (full ? ' full-width' : '') + '"><label>' + label + '</label>' + control + (hint ? '<div class="field-hint">' + hint + '</div>' : '') + '</div>';
+    }
+    function zt(id, label, on, hint) {
+        return '<div class="form-group"><div class="switch-group"><label>' + label + '</label><label class="switch"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><span class="slider"></span></label></div>' + (hint ? '<div class="field-hint">' + hint + '</div>' : '') + '</div>';
+    }
+    function zsel(id, opts, val) {
+        return '<select id="' + id + '">' + opts.map(function (o) { return '<option' + (o === val ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
+    }
+    function mselChips(vals, ph) {
+        return vals.length ? vals.map(function (v) { return '<span class="msel-chip">' + esc(v) + '</span>'; }).join('') : '<span class="msel-ph">' + esc(ph || 'unspecified') + '</span>';
+    }
+    function zmulti(id, opts, sel, ph) {
+        return '<div class="msel" id="' + id + '" data-ph="' + esc(ph || 'unspecified') + '"><button type="button" class="msel-btn" onclick="mselToggle(this, event)"><span class="msel-val">' + mselChips(sel, ph) + '</span><span class="msel-caret">&#9662;</span></button>' +
+            '<div class="msel-menu">' + (opts.length ? opts.map(function (o) {
+                return '<label class="msel-opt"><input type="checkbox" value="' + esc(o.v) + '"' + (sel.indexOf(o.v) >= 0 ? ' checked' : '') + ' onchange="mselUpdate(this)"><span>' + esc(o.l) + '</span></label>';
+            }).join('') : '<div class="msel-empty">No options available</div>') + '</div></div>';
+    }
+    function mselCloseAll() {
+        Array.prototype.forEach.call(document.querySelectorAll('.msel.open'), function (m) { m.classList.remove('open'); });
+    }
+    function mselToggle(btn, ev) {
+        ev.stopPropagation();
+        var el = btn.parentNode, was = el.classList.contains('open');
+        mselCloseAll();
+        if (!was) el.classList.add('open');
+    }
+    function mselUpdate(inp) {
+        var el = inp.closest('.msel');
+        var vals = Array.prototype.filter.call(el.querySelectorAll('input'), function (i) { return i.checked; }).map(function (i) { return i.value; });
+        el.querySelector('.msel-val').innerHTML = mselChips(vals, el.getAttribute('data-ph'));
+    }
+    document.addEventListener('click', function (e) { if (!e.target.closest('.msel')) mselCloseAll(); });
+    function zlist(id, vals, ph) {
+        var v = (vals && vals.length) ? vals : [''];
+        return '<div class="dyn-list" id="' + id + '" data-ph="' + esc(ph || '') + '">' + v.map(function (x) { return listRow(ph, x); }).join('') + '</div>' +
+               '<button class="btn" type="button" onclick="addStaticRow(this)" style="align-self:flex-start; margin-top:8px;">Add entry</button>';
+    }
+    function zpane(name, inner, first) {
+        return '<div class="tab-view' + (first ? ' active-view' : '') + '" data-panegroup="zone" data-name="' + name + '">' + inner + '</div>';
+    }
+    function zoneChipOpts() {
+        return DATA.zone.map(function (z) { return { v: z.name, l: z.name + ' \u00b7 ' + (z.nets.length ? z.nets.map(netLabel).join(', ') : '(empty)') }; });
+    }
+    function devTypeInit() { /* reserved */ }
+
+    function zoneBody(z, isNew) {
+        var nm = z.name || 'this new zone';
+        var netOpts = Object.keys(NETS).sort().map(function (id) { return { v: id, l: netLabel(id) }; });
+        var devOpts = DEVS.map(function (d) { return { v: d[0], l: d[0] + ' \u00b7 ' + d[1] }; });
+        var srcs = DATA.zone.filter(function (x) { return x.name && x.dests.indexOf(z.name) >= 0; }).map(function (x) { return x.name; });
+        var pol = ['accept', 'reject', 'drop'];
+
+        var general =
+            '<div class="panel-card"><div class="panel-title">General Settings</div>' +
+                '<p class="z-note">This section defines common properties of "' + esc(nm) + '". The <em>input</em> and <em>output</em> options set the default policies for traffic entering and leaving this zone while the <em>forward</em> option describes the policy for forwarded traffic between different networks within the zone. <em>Covered networks</em> specifies which available networks are members of this zone.</p>' +
+                '<div class="form-grid-2col">' +
+                    zf('Name', '<input type="text" id="z-name" value="' + esc(z.name) + '" placeholder="Unnamed zone">', null, true) +
+                    zf('Input', zsel('z-input', pol, z.input)) +
+                    zf('Output', zsel('z-output', pol, z.output)) +
+                    zf('Intra zone forward', zsel('z-forward', pol, z.forward), null, true) +
+                    zt('z-masq', 'IPv4 Masquerading', z.masq, 'Enable network address and port translation IPv4 (NAT4 or NAPT4) for outbound traffic on this zone. This is typically enabled on the <em>wan</em> zone.') +
+                    zt('z-mss', 'MSS clamping', z.mss, null) +
+                    zf('Covered networks', zmulti('z-nets', netOpts, z.nets), null, true) +
+                '</div></div>' +
+            '<div class="panel-card"><div class="panel-title">Forwarding</div>' +
+                '<p class="z-note">The options below control the forwarding policies between this zone (' + esc(nm) + ') and other zones. <em>Destination zones</em> cover forwarded traffic <strong>originating from ' + esc(nm) + '</strong>. <em>Source zones</em> match forwarded traffic from other zones <strong>targeted at ' + esc(nm) + '</strong>. The forwarding rule is <em>unidirectional</em>, e.g. a forward from lan to wan does <em>not</em> imply a permission to forward from wan to lan as well.</p>' +
+                '<div class="form-grid-2col">' +
+                    zf('Allow forward to <em>destination zones</em>:', zmulti('z-dests', zoneChipOpts(), z.dests), null, true) +
+                    zf('Allow forward from <em>source zones</em>:', zmulti('z-srcs', zoneChipOpts(), srcs), null, true) +
+                '</div></div>';
+
+        var advanced =
+            '<div class="panel-card"><div class="panel-title">Advanced Settings</div><div class="form-grid-2col">' +
+                zf('Covered devices', zmulti('z-devices', devOpts, z.devices), 'Use this option to classify zone traffic by raw, non-uci managed network devices.', true) +
+                zf('Covered subnets', zlist('z-subnets', z.subnets, 'e.g. 192.0.2.0/24'), 'Use this option to classify zone traffic by source or destination subnet instead of networks or devices.', true) +
+                zt('z-masq6', 'IPv6 Masquerading', z.masq6, 'Enable network address and port translation IPv6 (NAT6 or NAPT6) for outbound traffic on this zone.') +
+                zf('Restrict to address family', zsel('z-family', ['IPv4 and IPv6', 'IPv4 only', 'IPv6 only'], z.family)) +
+                zf('Restrict Masquerading to given source subnets', zlist('z-msrc', z.masqSrc, '0.0.0.0/0'), null, true) +
+                zf('Restrict Masquerading to given destination subnets', zlist('z-mdst', z.masqDst, '0.0.0.0/0'), null, true) +
+                zf('Enable logging', zmulti('z-log', [{ v: 'filter', l: 'filter' }, { v: 'mangle', l: 'mangle' }], z.log), 'Log matched packets on the selected tables to syslog. No table selected means logging is off.', true) +
+            '</div></div>';
+
+        var conntrack =
+            '<div class="panel-card"><div class="panel-title">Conntrack Settings</div><div class="form-grid-2col">' +
+                zt('z-invalid', 'Allow "invalid" traffic', z.invalid, 'Do not install extra rules to reject forwarded traffic with conntrack state <em>invalid</em>. This may be required for complex asymmetric route setups.') +
+                zt('z-helper', 'Automatic helper assignment', z.helper, 'Automatically assign conntrack helpers based on traffic protocol and port') +
+            '</div></div>';
+
+        return zpane('general', general, true) + zpane('advanced', advanced) + zpane('conntrack', conntrack);
+    }
+
+    function zChecked(id) {
+        return Array.prototype.filter.call($(id).querySelectorAll('input'), function (i) { return i.checked; }).map(function (i) { return i.value; });
+    }
+    function zList(id) {
+        return Array.prototype.map.call($(id).querySelectorAll('input'), function (i) { return i.value.trim(); }).filter(Boolean);
+    }
+
+    // Mockup behaviour: saves into memory and keeps the other zones' forward targets in sync.
+    function saveZone() {
+        var name = $('z-name').value.trim();
+        if (!name) {
+            var a = $('rec-alert'); a.textContent = '\u25B2 Expecting: non-empty value'; a.style.display = 'inline-block';
+            tabTo('zone', 'general'); $('z-name').focus();
+            return;
+        }
+        var z = {
+            name: name, input: $('z-input').value, output: $('z-output').value, forward: $('z-forward').value,
+            masq: $('z-masq').checked, mss: $('z-mss').checked, nets: zChecked('z-nets'), dests: zChecked('z-dests'),
+            devices: zChecked('z-devices'), subnets: zList('z-subnets'), masq6: $('z-masq6').checked, family: $('z-family').value,
+            masqSrc: zList('z-msrc'), masqDst: zList('z-mdst'), log: zChecked('z-log'), invalid: $('z-invalid').checked, helper: $('z-helper').checked
+        };
+        var srcs = zChecked('z-srcs'), old = (recIdx === null) ? null : DATA.zone[recIdx];
+        if (old && old.name !== name) {
+            DATA.zone.forEach(function (o) { o.dests = o.dests.map(function (n) { return n === old.name ? name : n; }); });
+        }
+        if (recIdx === null) DATA.zone.push(z); else DATA.zone[recIdx] = z;
+        DATA.zone.forEach(function (o) {
+            if (o === z) return;
+            var has = o.dests.indexOf(name) >= 0, want = srcs.indexOf(o.name) >= 0;
+            if (want && !has) o.dests.push(name);
+            if (!want && has) o.dests.splice(o.dests.indexOf(name), 1);
+        });
+        renderAll();
+        closeRec();
+    }
+
+    $('rec-modal').addEventListener('mousedown', function (e) { if (e.target === this) closeRec(); });
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        if (document.querySelector('.msel.open')) { mselCloseAll(); return; }
+        if ($('rec-modal').classList.contains('open')) closeRec();
+    });
+
+    renderAll();
+</script>
+<script src="../shared/theme-clock.js"></script>
+</body>
+</html>

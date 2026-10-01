@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGFW - Administration</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../shared/tokens.css">
+    <link rel="stylesheet" href="../shared/components.css">
+    <style>
+        /* Shared look with the Firewall / Interfaces pages */
+        :root {
+            --if-navy: #14213d; --if-navy-2: #1f3560;
+            --if-navy-grad: linear-gradient(135deg, var(--if-navy) 0%, var(--if-navy-2) 100%);
+            --if-shadow-sm: 0 1px 1px rgba(15, 23, 42, 0.06), 0 3px 6px rgba(15, 23, 42, 0.08), 0 8px 16px -4px rgba(15, 23, 42, 0.10);
+            --if-shadow-md: 0 2px 3px rgba(15, 23, 42, 0.08), 0 8px 16px rgba(15, 23, 42, 0.12), 0 22px 36px -8px rgba(15, 23, 42, 0.18);
+        }
+        ::selection { background: color-mix(in srgb, var(--if-navy-2) 25%, transparent); }
+        body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+        .mono, .data-table td { font-variant-numeric: tabular-nums; }
+        .mono { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12.5px; }
+
+        .panel-card { background: linear-gradient(180deg, var(--bg-card), color-mix(in srgb, var(--bg-card) 94%, var(--surface-alt))); box-shadow: var(--if-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+        .table-scroll { border-radius: 14px; box-shadow: var(--if-shadow-md); }
+        .panel-card .table-scroll { box-shadow: none; border: 1px solid var(--border-color); border-radius: 12px; }
+
+        /* Tabs: segmented control */
+        .tabs { display: inline-flex; gap: 4px; padding: 4px; max-width: 100%; overflow-x: auto; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06); }
+        .tabs .tab { border: none; border-bottom: none; background: transparent; border-radius: 9px; padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; cursor: pointer; box-shadow: none; transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease; }
+        .tabs .tab::after { display: none; }
+        .tabs .tab:hover { color: var(--text-main); }
+        .tabs .tab.active { background: var(--bg-card); color: var(--text-main); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 4px 10px -3px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7); }
+
+        /* Forms */
+        .form-grid-2col { gap: 18px 24px; }
+        .form-group > label { display: block; font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; }
+        .field-hint { font-size: 12px; line-height: 1.55; color: var(--text-muted); margin-top: 6px; }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group input[type="password"], .form-group select, .form-group textarea {
+            min-height: 38px; border-radius: 10px; font-size: 13.5px; background: var(--bg-card); border: 1px solid var(--border-color);
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.07); transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .form-group textarea { width: 100%; box-sizing: border-box; padding: 9px 12px; font-family: inherit; color: var(--text-main); resize: vertical; }
+        .form-group textarea.key-input { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12.5px; border-style: dashed; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--if-navy-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--if-navy-2) 22%, transparent), inset 0 1px 2px rgba(15, 23, 42, 0.07); }
+        .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-muted); opacity: 0.65; }
+        .panel-title { font-size: 14px; font-weight: 700; letter-spacing: -0.1px; padding-bottom: 12px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); }
+        .switch input:checked + .slider { background: var(--if-navy-2); }
+        .inline-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .inline-row .time-display { min-width: 210px; }
+        .unit { font-size: 13px; color: var(--text-muted); }
+        .dyn-list { display: flex; flex-direction: column; gap: 8px; }
+        .dyn-row { display: flex; gap: 8px; }
+        .dyn-row input { flex: 1 1 auto; }
+        .dyn-row .btn { flex: 0 0 auto; padding: 6px 12px; }
+
+        /* Buttons */
+        .btn { font-weight: 600; border-radius: 10px; transition: box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease, border-color 0.15s ease; }
+        .btn:active { transform: translateY(1px); }
+        .btn:focus-visible, .tabs .tab:focus-visible { outline: 2px solid var(--if-navy-2); outline-offset: 2px; }
+        .switch input:focus-visible + .slider { outline: 2px solid var(--if-navy-2); outline-offset: 2px; }
+        .view-footer-actions .btn-primary, .panel-title > .btn-primary {
+            background: var(--if-navy-grad); border-color: var(--if-navy); color: #fff;
+            box-shadow: 0 8px 16px -4px rgba(20, 33, 61, 0.55), 0 2px 3px rgba(20, 33, 61, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .panel-title > .btn-primary { margin-left: 14px; padding: 6px 18px; font-size: 12.5px; }
+
+        /* Tables */
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .data-table thead th { background: var(--surface-alt); color: var(--text-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.2px; text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+        .data-table tbody td { padding: 13px 16px; font-size: 13px; vertical-align: middle; border-bottom: 1px solid var(--border-color); overflow-wrap: anywhere; }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+        .data-table tbody tr { transition: background 0.12s ease; }
+        .data-table tbody tr:hover { background: var(--surface-alt); }
+
+        /* Intro cards, titled sections */
+        .fw-title { font-size: 15px; font-weight: 700; letter-spacing: -0.1px; color: var(--text-main); margin-bottom: 8px; }
+        .fw-count { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-left: auto; }
+        .dh-intro { margin-bottom: 20px; padding: 18px 22px; }
+        .dh-intro p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.65; color: var(--text-muted); }
+        .dh-intro p:last-child { margin-bottom: 0; }
+        .dh-intro code, .panel-card p code { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12px; background: var(--surface-alt); border: 1px solid var(--border-color); border-radius: 5px; padding: 1px 5px; }
+        .panel-title.dh-ico { display: flex; align-items: center; gap: 10px; }
+        .panel-title.dh-ico::before {
+            content: ''; flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px;
+            background: var(--if-navy) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 6h16M4 12h16M4 18h10'/%3E%3C/svg%3E") center / 15px no-repeat;
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="brand">NGFW</div>
+    <a class="menu-item" href="status.html">Dashboard</a>
+    <div class="menu-item" onclick="toggleMenu('status-menu');"><span>Status</span><span class="caret" id="status-menu-caret">▸</span></div>
+    <div class="sub-menu" id="status-menu">
+        <a class="menu-item" href="status.html">Overview</a>
+        <a class="menu-item" href="routing.html">Routing</a>
+        <a class="menu-item" href="firewall.html">Firewall</a>
+        <a class="menu-item" href="logs.html">System Logs</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('system-menu');"><span>System</span><span class="caret" id="system-menu-caret">▸</span></div>
+    <div class="sub-menu open" id="system-menu">
+        <a class="menu-item" href="system.html">System</a>
+        <a class="menu-item active" href="administration.html">Administration</a>
+        <a class="menu-item" href="software.html">Software</a>
+        <a class="menu-item" href="startup.html">Startup</a>
+        <a class="menu-item" href="scheduled.html">Scheduled Tasks</a>
+        <a class="menu-item" href="backup.html">Backup / Flash Firmware</a>
+        <a class="menu-item" href="reboot.html">Reboot</a>
+    </div>
+    <div class="menu-item" onclick="toggleMenu('network-menu');"><span>Network</span><span class="caret" id="network-menu-caret">▸</span></div>
+    <div class="sub-menu" id="network-menu">
+        <a class="menu-item" href="interfaces.html">Interfaces</a>
+        <a class="menu-item" href="network-routing.html">Routing</a>
+        <a class="menu-item" href="dhcp.html">DHCP</a>
+        <a class="menu-item" href="dns.html">DNS</a>
+        <a class="menu-item" href="diagnostics.html">Diagnostics</a>
+        <a class="menu-item" href="network-firewall.html">Firewall</a>
+    </div>
+    <a href="#" class="menu-item" style="margin-top: auto;">Log out</a>
+</div>
+
+<div class="main-content">
+    <div class="top-header">
+        <div class="header-left"><div class="page-title">Administration</div></div>
+        <div class="header-right">
+            <div class="time-display" id="liveTime">--:--:--</div>
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color theme">
+                <span id="themeIcon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span id="themeLabel">Dark</span>
+            </button>
+            <div class="status-badge">&#9679; Refreshing</div>
+        </div>
+    </div>
+
+    <div class="page-container" id="section-admin">
+        <div class="tabs" style="margin-bottom:20px;">
+            <button class="tab active" id="sys-tab-router" onclick="switchSystemTab('router')">Router Password</button>
+            <button class="tab" id="sys-tab-ssh" onclick="switchSystemTab('ssh')">SSH Access</button>
+            <button class="tab" id="sys-tab-keys" onclick="switchSystemTab('keys')">SSH-Keys</button>
+            <button class="tab" id="sys-tab-repo" onclick="switchSystemTab('repo')">Repo Public Keys</button>
+        </div>
+
+        <!-- ROUTER PASSWORD: passwd / uci set rpcd -->
+        <div class="tab-view active-view" id="sys-view-router">
+            <!-- <div class="panel-card dh-intro"><div class="fw-title">Administration - Router Password</div><p>Changes the administrator password for accessing the device.</p></div> -->
+            <div class="panel-card">
+                <div class="panel-title dh-ico">Router Password</div>
+                <div class="form-grid-2col">
+                    <div class="form-group"><label>Password</label><input type="password" placeholder="Enter new password"></div>
+                    <div class="form-group"><label>Confirmation</label><input type="password" placeholder="Re-enter password"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SSH ACCESS: /etc/config/dropbear (config dropbear) -->
+        <div class="tab-view" id="sys-view-ssh">
+            <!-- <div class="panel-card dh-intro"><div class="fw-title">Administration - SSH Access</div><p>Dropbear offers SSH network shell access and an integrated SCP server.</p></div> -->
+            <div class="panel-card">
+                <div class="panel-title dh-ico">Dropbear Instance</div>
+                <div class="form-grid-2col">
+                    <div class="form-group"><div class="switch-group"><label>Enable Instance</label><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div><div class="field-hint">Enable SSH service instance</div></div>
+                    <div class="form-group">
+                        <label>Bind to Interface</label>
+                        <select><option>unspecified</option><option>lan</option><option>wan</option><option>eth4</option><option>eth5</option><option>eth6</option></select>
+                        <div class="field-hint">Listen on up to 10 IPs on the given interface or, if unspecified, on all interfaces</div>
+                    </div>
+                    <div class="form-group"><label>Port</label><input type="number" value="22" min="1" max="65535"></div>
+                    <div class="form-group"><div class="switch-group"><label>Password authentication</label><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div><div class="field-hint">Allow SSH password authentication</div></div><div class="form-group"><div class="switch-group"><label>Allow root logins with password</label><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div><div class="field-hint">Allow the root user to log in with password</div></div><div class="form-group"><div class="switch-group"><label>Gateway Ports</label><label class="switch"><input type="checkbox"><span class="slider"></span></label></div><div class="field-hint">Allow remote hosts to connect to local SSH forwarded ports</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SSH KEYS: /etc/dropbear/authorized_keys -->
+        <div class="tab-view" id="sys-view-keys">
+            <!-- <div class="panel-card dh-intro"><div class="fw-title">Administration - SSH Keys</div><p>Manage authorized SSH keys for administrator access.</p></div> -->
+            <div class="panel-card">
+                <div class="panel-title dh-ico">SSH Keys</div>
+                <div class="form-grid-2col">
+                    <div class="form-group full-width"><label>Authorized Keys</label><textarea class="key-input" style="min-height:170px;"></textarea></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- REPO PUBLIC KEYS: /etc/apk/keys/*.pem (one file per repository public key) -->
+        <div class="tab-view" id="sys-view-repo">
+            <!-- <div class="panel-card dh-intro"><div class="fw-title">Administration - Repository Public Keys</div><p>Each software repository public key (from official or third party repositories) allows packages in lists signed by it to be installed by the package manager.</p><p>Each key is stored as a file in <code>/etc/apk/keys/</code>.</p></div> -->
+            <div class="panel-card">
+                <div class="panel-title dh-ico">Installed keys<span class="fw-count" id="count-repo"></span></div>
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead><tr><th style="width:220px;">Name</th><th>Key</th><th style="width:100px; text-align:right;">Actions</th></tr></thead>
+                        <tbody id="repo-keys-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="panel-card">
+                <div class="panel-title dh-ico">Add new repository public key<button class="btn btn-primary" type="button" onclick="addRepoKey()">Add key</button></div>
+                <div class="form-grid-2col">
+                    <div class="form-group full-width">
+                        <textarea class="key-input" id="repo-key-input" style="min-height:130px;" placeholder="Paste content of a file, or a URL to a key file, or drag and drop here to upload a software repository public key…"></textarea>
+                        <div class="field-hint">Add a new repository public key by pasting its content, a file, or a URL.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="view-footer-actions"><button class="btn">Reset</button><button class="btn btn-primary">Save &amp; Apply</button></div>
+        <div class="floating-save-bar">
+            <button class="btn btn-primary" style="padding: 6px 12px; font-size:12px;">Save &amp; Apply</button>
+        </div>
+        <div class="page-footer">
+            Powered by LuCI (HEAD detached at 650a6ca3) branch (26.124.63982~650a6ca) &nbsp;|&nbsp; ArgonTheme v2.4.5 &nbsp;|&nbsp; OpenWrt 25.12.3-r32912-6639b15f62
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleMenu(menuId) {
+        var subMenu = document.getElementById(menuId);
+        var caret = document.getElementById(menuId.replace('-menu', '-menu-caret'));
+        if (!subMenu || !caret) return;
+        var isOpen = subMenu.classList.toggle('open');
+        caret.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+
+    function switchSystemTab(tab) {
+        ['router', 'ssh', 'keys', 'repo'].forEach(function (t) {
+            document.getElementById('sys-tab-' + t).classList.toggle('active', t === tab);
+            document.getElementById('sys-view-' + t).classList.toggle('active-view', t === tab);
+        });
+    }
+
+    // Repository public keys. Replace with the real contents of /etc/apk/keys/ once wired to the device.
+    var REPO_KEYS = [
+        { name: 'openwrt-25.12.pem', key: '-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAECqruC4JU7pfpnkQuueBaT29I1dFx\nXbc7xYsY5R2+r3Hg3SO3B2QLpMaghA9Uzx/E2PGaNkYe24uPPg/n7Q9Jeg==\n-----END PUBLIC KEY-----' },
+        { name: 'public-key.pem', key: '-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpvQ359kftuTIaExaAa60rbWnWIeA\nhgCSO+bU5uACNGbahK3OmInA0UPwWeRadIE0dDJu6U34kfkjyz8FOiVJTQ==\n-----END PUBLIC KEY-----' }
+    ];
+    var repoCounter = 1;
+
+    function escHtml(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    function renderRepoKeys() {
+        document.getElementById('repo-keys-body').innerHTML = REPO_KEYS.length ? REPO_KEYS.map(function (k, i) {
+            return '<tr><td class="mono" style="vertical-align:top;">' + escHtml(k.name) + '</td>' +
+                   '<td style="white-space:pre-wrap; word-break:break-all;" class="mono">' + escHtml(k.key) + '</td>' +
+                   '<td style="text-align:right; vertical-align:top;"><button class="btn btn-danger-outline" type="button" onclick="deleteRepoKey(' + i + ')">Delete</button></td></tr>';
+        }).join('') : '<tr class="dev-empty-row"><td colspan="3" style="text-align:center; color:var(--text-muted); font-style:italic; padding:34px 16px;">No repository public keys installed.</td></tr>';
+        document.getElementById('count-repo').textContent = REPO_KEYS.length ? REPO_KEYS.length + (REPO_KEYS.length === 1 ? ' entry' : ' entries') : '';
+    }
+    function deleteRepoKey(i) { REPO_KEYS.splice(i, 1); renderRepoKeys(); }
+    function addRepoKey() {
+        var input = document.getElementById('repo-key-input');
+        var value = input.value.trim();
+        if (!value) return;
+        REPO_KEYS.push({ name: 'new-key-' + (repoCounter++) + '.pem', key: value });
+        input.value = '';
+        renderRepoKeys();
+    }
+
+    // Drag and drop a key file onto the textarea
+    (function () {
+        var input = document.getElementById('repo-key-input');
+        input.addEventListener('dragover', function (e) { e.preventDefault(); input.style.borderColor = 'var(--primary)'; });
+        input.addEventListener('dragleave', function () { input.style.borderColor = ''; });
+        input.addEventListener('drop', function (e) {
+            e.preventDefault();
+            input.style.borderColor = '';
+            var f = e.dataTransfer.files && e.dataTransfer.files[0];
+            if (!f) return;
+            var r = new FileReader();
+            r.onload = function () { input.value = r.result; };
+            r.readAsText(f);
+        });
+    })();
+
+    renderRepoKeys();
+</script>
+<script src="../shared/theme-clock.js"></script>
+</body>
+</html>
