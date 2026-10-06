@@ -504,6 +504,20 @@
         .data-table td, .data-table th { overflow-wrap: anywhere; }
         .fw-lines div { overflow-wrap: anywhere; word-break: break-word; }
         .dev-actions { flex-wrap: wrap; row-gap: 6px; }
+
+        /* Add buttons: lead's blue instead of navy */
+        .panel-title > .btn-primary { background: var(--primary); border-color: transparent; color: #fff; box-shadow: none; }
+        .panel-title > .btn-primary:hover { background: var(--primary-hover); }
+
+        /* Zones: lead's row design */
+        .zone-grid { gap: 12px; }
+        .zone-flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .zone-arrow-s { color: var(--text-muted); font-size: 12px; }
+        .zone-flow .zone-rej { margin-top: 0; }
+        .zone-chip.lan { background: var(--lan-bg); color: var(--lan-text); border-color: transparent; }
+        .zone-chip.wan { background: var(--wan-bg); color: var(--wan-text); border-color: transparent; }
+        .zone-grid select { padding: 4px 8px; font-size: 12px; width: 100%; }
+        .zone-grid .switch { transform: scale(0.8); transform-origin: left center; }
     </style>
 </head>
 <body>
@@ -535,7 +549,7 @@
         <a class="menu-item" href="dhcp.html">DHCP</a>
         <a class="menu-item" href="dns.html">DNS</a>
         <a class="menu-item" href="diagnostics.html">Diagnostics</a>
-        <a class="menu-item active" href="network-firewall.html">Firewall</a>
+        <a class="menu-item active" href="firewall.html">Firewall</a>
     </div>
     <a href="#" class="menu-item" style="margin-top: auto;">Log out</a>
 </div>
@@ -555,7 +569,7 @@
     <div class="page-container">
         <div class="tabs" style="margin-bottom:20px;"><button class="tab active" data-tabgroup="main" data-name="general" onclick="tabTo('main','general')">General Settings</button><button class="tab" data-tabgroup="main" data-name="fwd" onclick="tabTo('main','fwd')">Port Forwards</button><button class="tab" data-tabgroup="main" data-name="rules" onclick="tabTo('main','rules')">Traffic Rules</button><button class="tab" data-tabgroup="main" data-name="nat" onclick="tabTo('main','nat')">NAT Rules</button><button class="tab" data-tabgroup="main" data-name="ipsets" onclick="tabTo('main','ipsets')">IP Sets</button></div>
 
-        <div class="tab-view active-view" data-panegroup="main" data-name="general"><div class="panel-card dh-intro"><div class="fw-title">Firewall - Zone Settings</div><p>The firewall creates zones over your network interfaces to control network traffic flow.</p></div><div class="panel-card"><div class="panel-title dh-ico">General Settings</div><div class="form-grid-2col"><div class="form-group"><div class="switch-group"><label>Enable SYN-flood protection</label><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div></div><div class="form-group"><div class="switch-group"><label>Drop invalid packets</label><label class="switch"><input type="checkbox"><span class="slider"></span></label></div></div><div class="form-group"><label>Input</label><select><option selected>reject</option><option>drop</option><option>accept</option></select></div><div class="form-group"><label>Output</label><select><option selected>accept</option><option>reject</option><option>drop</option></select></div><div class="form-group"><label>Forward</label><select><option selected>reject</option><option>drop</option><option>accept</option></select></div></div></div><div class="panel-card"><div class="panel-title">Routing/NAT Offloading</div><p class="dh-note">Not fully compatible with QoS/SQM.</p><div class="form-grid-2col"><div class="form-group full-width"><label>Flow offloading type</label><select><option selected>None</option><option>Software</option><option>Hardware</option></select></div></div></div><div class="panel-card"><div class="panel-title dh-ico">Zones<span class="fw-count" id="count-zone"></span><button class="btn btn-primary" onclick="openRec('zone', null)">Add</button></div><div id="tbl-zone"></div></div></div><div class="tab-view" data-panegroup="main" data-name="fwd"><div class="panel-card dh-intro"><div class="fw-title">Firewall - Port Forwards</div><p>Port forwarding allows remote computers on the Internet to connect to a specific computer or service within the private LAN.</p></div><div class="panel-card"><div class="panel-title dh-ico">Port Forwards<span class="fw-count" id="count-fwd"></span><button class="btn btn-primary" onclick="openRec('fwd', null)">Add</button></div><div id="tbl-fwd"></div></div></div><div class="tab-view" data-panegroup="main" data-name="rules"><div class="panel-card dh-intro"><div class="fw-title">Firewall - Traffic Rules</div><p>Traffic rules define policies for packets travelling between different zones, for example to reject traffic between certain hosts or to open WAN ports on the router.</p></div><div class="panel-card"><div class="panel-title dh-ico">Traffic Rules<span class="fw-count" id="count-rule"></span><button class="btn btn-primary" onclick="openRec('rule', null)">Add</button></div><div class="fw-filter form-group" style="margin-bottom:14px;"><input type="text" placeholder="Filter rules&hellip;" oninput="setFilter('rule', this.value)"></div><div id="tbl-rule"></div></div></div><div class="tab-view" data-panegroup="main" data-name="nat"><div class="panel-card dh-intro"><div class="fw-title">Firewall - NAT Rules</div><p>NAT rules allow fine grained control over the source IP to use for outbound or forwarded traffic.</p></div><div class="panel-card"><div class="panel-title dh-ico">NAT Rules<span class="fw-count" id="count-nat"></span><button class="btn btn-primary" onclick="openRec('nat', null)">Add</button></div><div id="tbl-nat"></div></div></div><div class="tab-view" data-panegroup="main" data-name="ipsets"><div class="panel-card dh-intro"><div class="fw-title">Firewall - IP sets</div><p>firewall4 supports referencing and creating IP sets to simplify matching of large address lists without the need to create one rule per item to match. Port ranges in ipsets are unsupported by firewall4.</p><p>Your device runs firewall4.</p></div><div class="panel-card"><div class="panel-title dh-ico">IP Sets<span class="fw-count" id="count-ipset"></span><button class="btn btn-primary" onclick="openRec('ipset', null)">Add</button></div><div id="tbl-ipset"></div></div></div>
+        <div class="tab-view active-view" data-panegroup="main" data-name="general"><div class="panel-card"><div class="panel-title dh-ico">General Settings</div><div class="form-grid-2col"><div class="form-group"><div class="switch-group"><label>Enable SYN-flood protection</label><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div></div><div class="form-group"><div class="switch-group"><label>Drop invalid packets</label><label class="switch"><input type="checkbox"><span class="slider"></span></label></div></div><div class="form-group"><label>Input</label><select><option selected>reject</option><option>drop</option><option>accept</option></select></div><div class="form-group"><label>Output</label><select><option selected>accept</option><option>reject</option><option>drop</option></select></div><div class="form-group"><label>Forward</label><select><option selected>reject</option><option>drop</option><option>accept</option></select></div></div></div><div class="panel-card"><div class="panel-title dh-ico">Zones<span class="fw-count" id="count-zone"></span><button class="btn btn-primary" onclick="openRec('zone', null)">Add</button></div><div id="tbl-zone"></div></div></div><div class="tab-view" data-panegroup="main" data-name="fwd"><div class="panel-card dh-intro"><div class="fw-title">Firewall - Port Forwards</div><p>Port forwarding allows remote computers on the Internet to connect to a specific computer or service within the private LAN.</p></div><div class="panel-card"><div class="panel-title dh-ico">Port Forwards<span class="fw-count" id="count-fwd"></span><button class="btn btn-primary" onclick="openRec('fwd', null)">Add</button></div><div id="tbl-fwd"></div></div></div><div class="tab-view" data-panegroup="main" data-name="rules"><div class="panel-card dh-intro"><div class="fw-title">Firewall - Traffic Rules</div><p>Traffic rules define policies for packets travelling between different zones, for example to reject traffic between certain hosts or to open WAN ports on the router.</p></div><div class="panel-card"><div class="panel-title dh-ico">Traffic Rules<span class="fw-count" id="count-rule"></span><button class="btn btn-primary" onclick="openRec('rule', null)">Add</button></div><div class="fw-filter form-group" style="margin-bottom:14px;"><input type="text" placeholder="Filter rules&hellip;" oninput="setFilter('rule', this.value)"></div><div id="tbl-rule"></div></div></div><div class="tab-view" data-panegroup="main" data-name="nat"><div class="panel-card dh-intro"><div class="fw-title">Firewall - NAT Rules</div><p>NAT rules allow fine grained control over the source IP to use for outbound or forwarded traffic.</p></div><div class="panel-card"><div class="panel-title dh-ico">NAT Rules<span class="fw-count" id="count-nat"></span><button class="btn btn-primary" onclick="openRec('nat', null)">Add</button></div><div id="tbl-nat"></div></div></div><div class="tab-view" data-panegroup="main" data-name="ipsets"><div class="panel-card dh-intro"><div class="fw-title">Firewall - IP sets</div><p>firewall4 supports referencing and creating IP sets to simplify matching of large address lists without the need to create one rule per item to match. Port ranges in ipsets are unsupported by firewall4.</p><p>Your device runs firewall4.</p></div><div class="panel-card"><div class="panel-title dh-ico">IP Sets<span class="fw-count" id="count-ipset"></span><button class="btn btn-primary" onclick="openRec('ipset', null)">Add</button></div><div id="tbl-ipset"></div></div></div>
 
         <div class="view-footer-actions"><button class="btn">Reset</button><button class="btn btn-primary">Save &amp; Apply</button></div>
         <div class="floating-save-bar">
@@ -880,9 +894,33 @@
     SCHEMAS.nat.widths   = ['18%', '', '260px', '84px', '170px'];
     SCHEMAS.ipset.widths = ['16%', '90px', '120px', '', '130px', '90px', '170px'];
 
+    // ---------- zones: lead's row design ----------
+    function zChip(n) { return '<span class="zone-chip' + ((n === 'lan' || n === 'wan') ? ' ' + n : '') + '">' + esc(n) + '</span>'; }
+    function zSel(i, k) {
+        return '<select onchange="DATA.zone[' + i + '].' + k + ' = this.value">' + ['accept', 'reject', 'drop'].map(function (o) {
+            return '<option' + (DATA.zone[i][k] === o ? ' selected' : '') + '>' + o + '</option>';
+        }).join('') + '</select>';
+    }
+    function renderZones() {
+        var list = DATA.zone;
+        $('tbl-zone').innerHTML = '<div class="list-card-container">' + (list.length ? list.map(function (z, i) {
+            return '<div class="data-row zone-grid">' +
+                '<div><div class="data-label">Zone Forwards</div><div class="zone-flow">' + zChip(z.name) + '<span class="zone-arrow-s">&rarr;</span>' +
+                    (z.dests.length ? z.dests.map(zChip).join('') : '<span class="zone-rej">REJECT</span>') + '</div></div>' +
+                '<div><div class="data-label">Input</div>' + zSel(i, 'input') + '</div>' +
+                '<div><div class="data-label">Output</div>' + zSel(i, 'output') + '</div>' +
+                '<div><div class="data-label">Forward</div>' + zSel(i, 'forward') + '</div>' +
+                '<div><div class="data-label">Masquerading</div><label class="switch"><input type="checkbox"' + (z.masq ? ' checked' : '') + ' onchange="DATA.zone[' + i + '].masq = this.checked"><span class="slider"></span></label></div>' +
+                '<div class="actions-cell"><div class="btn-action-group"><button class="btn" onclick="openRec(\'zone\',' + i + ')">Edit</button>' +
+                    '<button class="btn btn-danger-outline" onclick="delRec(\'zone\',' + i + ')">Delete</button></div></div></div>';
+        }).join('') : '<div class="data-row" style="display:block; text-align:center; color:var(--text-muted); font-style:italic;">This section contains no values yet</div>') + '</div>';
+        $('count-zone').textContent = list.length ? list.length + (list.length === 1 ? ' entry' : ' entries') : '';
+    }
+
     // ---------- tables ----------
     var FILTER = {};
     function renderTable(name) {
+        if (name === 'zone') { renderZones(); return; }
         var sc = SCHEMAS[name], list = DATA[name], q = (FILTER[name] || '').toLowerCase();
         var head = sc.cols.map(function (c) { return '<th' + (c.cls ? ' class="' + c.cls + '"' : '') + '>' + c.label + '</th>'; }).join('') + '<th style="text-align:right;">Actions</th>';
         var shown = 0;
